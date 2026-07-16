@@ -72,12 +72,11 @@ navigate — not preemptively.
 
 The converted Gurmukhi text still has vishraam markers glued to the end of certain words:
 `.` (light pause), `,` (medium), `;` (heavy) -- straight from the source data, not added by
-the Unicode conversion. `GurmukhiLine` in `client/src/App.jsx` splits each line on spaces,
-strips a trailing marker off any word that has one, and wraps that word in a
-`vishraam-light`/`vishraam-heavy` span (colors: sky blue / orange, in `index.css` as
-`--vishraam-light` / `--vishraam-heavy`). Medium (`,`) maps to the same `light` (blue)
-styling as light pauses -- all three marker types are stripped from display, but only two
-colors are used.
+the Unicode conversion. `GurmukhiLine` in `client/src/App.jsx` splits each line on spaces and
+strips a trailing marker off any word that has one (all three types), but only colors two of
+them: `,` gets the `vishraam-light` class (sky blue), `;` gets `vishraam-heavy` (orange). `.`
+is stripped like the others but left plain -- no color assigned. Colors live in `index.css`
+as `--vishraam-light` / `--vishraam-heavy`.
 
 ### Why the database is committed as a `.gz`
 

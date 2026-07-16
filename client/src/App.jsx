@@ -17,17 +17,18 @@ function getShabadsByIds(ids) {
 }
 
 // Vishraams (pause markers) are glued to the end of a word: "." light,
-// "," medium, ";" heavy. Color the word they're attached to and drop the
-// marker itself from display. Medium shares the light color (both blue).
-const VISHRAAM_TYPES = { '.': 'light', ',': 'light', ';': 'heavy' }
+// "," medium, ";" heavy. All three are stripped from display, but only
+// medium (blue) and heavy (orange) get a color -- light stays plain.
+const VISHRAAM_MARKERS = new Set(['.', ',', ';'])
+const VISHRAAM_COLOR_CLASS = { ',': 'vishraam-light', ';': 'vishraam-heavy' }
 
 function GurmukhiLine({ text }) {
   const words = text.split(' ')
   return words.map((word, i) => {
-    const type = VISHRAAM_TYPES[word.slice(-1)]
-    const display = type ? word.slice(0, -1) : word
+    const marker = word.slice(-1)
+    const display = VISHRAAM_MARKERS.has(marker) ? word.slice(0, -1) : word
     return (
-      <span key={i} className={type ? `vishraam-${type}` : undefined}>
+      <span key={i} className={VISHRAAM_COLOR_CLASS[marker]}>
         {display}
         {i < words.length - 1 ? ' ' : ''}
       </span>
