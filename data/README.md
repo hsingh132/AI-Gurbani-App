@@ -19,9 +19,13 @@ offline, with no dependency on any live API.
 To use it, decompress first:
 
 ```bash
-gunzip -k data/gurbani-database.sqlite.gz
+./scripts/decompress-db.sh
 # -> data/gurbani-database.sqlite
 ```
+
+The decompressed `.sqlite` file is gitignored — only the `.gz` is tracked in git (the
+uncompressed file is 158.7 MB, over GitHub's 100MB hard push limit). Re-run the script any
+time after cloning; it's a couple seconds.
 
 ## License
 
