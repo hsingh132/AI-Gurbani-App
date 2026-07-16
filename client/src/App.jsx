@@ -16,6 +16,25 @@ function getShabadsByIds(ids) {
   return Promise.all(ids.map((id) => api(`/shabads/${id}`)))
 }
 
+// Vishraams (pause markers) are glued to the end of a word: "." light,
+// "," medium, ";" heavy. Color the word they're attached to and drop the
+// marker itself from display.
+const VISHRAAM_TYPES = { '.': 'light', ',': 'medium', ';': 'heavy' }
+
+function GurmukhiLine({ text }) {
+  const words = text.split(' ')
+  return words.map((word, i) => {
+    const type = VISHRAAM_TYPES[word.slice(-1)]
+    const display = type ? word.slice(0, -1) : word
+    return (
+      <span key={i} className={type ? `vishraam-${type}` : undefined}>
+        {display}
+        {i < words.length - 1 ? ' ' : ''}
+      </span>
+    )
+  })
+}
+
 function ShabadCard({ shabad, isFavorite, onToggleFavorite, topics, onAddToTopic }) {
   return (
     <article className="shabad-card">
@@ -51,7 +70,9 @@ function ShabadCard({ shabad, isFavorite, onToggleFavorite, topics, onAddToTopic
       <ol className="lines">
         {shabad.lines.map((line) => (
           <li key={line.id}>
-            <p className="gurmukhi">{line.gurmukhi}</p>
+            <p className="gurmukhi">
+              <GurmukhiLine text={line.gurmukhi} />
+            </p>
             {line.translation && <p className="translation">{line.translation}</p>}
           </li>
         ))}

@@ -68,6 +68,17 @@ Deliberately kept flat: one file per concern (db, server, UI) rather than splitt
 into many small route/component files. Re-split only if a file actually gets hard to
 navigate — not preemptively.
 
+### Vishraams (pause markers)
+
+The converted Gurmukhi text still has vishraam markers glued to the end of certain words:
+`.` (light pause), `,` (medium), `;` (heavy) -- straight from the source data, not added by
+the Unicode conversion. `GurmukhiLine` in `client/src/App.jsx` splits each line on spaces,
+strips a trailing marker off any word that has one, and wraps that word in a
+`vishraam-light`/`vishraam-heavy` span (colors: sky blue / orange, in `index.css` as
+`--vishraam-light` / `--vishraam-heavy`). Medium (`,`) is parsed out of the display text the
+same way but currently left uncolored — add a `--vishraam-medium` var + `.vishraam-medium`
+class if a third color is wanted later.
+
 ### Why the database is committed as a `.gz`
 
 The raw SQLite file is 158.7 MB, which is over GitHub's hard 100MB-per-file push limit — it
@@ -152,8 +163,9 @@ started as part of this scaffold.
 
 1. ~~Gurmukhi rendering~~ done
 2. ~~Favorites/Topics browsing UI~~ done
-3. AI search (RAG layer) -- needs a decision on local-embeddings-vs-API-based first
-4. Visual overhaul -- last
+3. ~~Vishraam (pause marker) coloring~~ done
+4. AI search (RAG layer) -- needs a decision on local-embeddings-vs-API-based first
+5. Visual overhaul -- last
 
 ## Known limitations / next steps
 

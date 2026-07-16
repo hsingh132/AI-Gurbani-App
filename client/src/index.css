@@ -5,6 +5,8 @@
   --border: #e5e4e7;
   --card-bg: #f7f6f3;
   --accent: #aa3bff;
+  --vishraam-light: #0ea5e9;
+  --vishraam-heavy: #f97316;
 
   --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
   font: 16px/145% var(--sans);
@@ -21,6 +23,8 @@
     --border: #2e303a;
     --card-bg: #1f2028;
     --accent: #c084fc;
+    --vishraam-light: #38bdf8;
+    --vishraam-heavy: #fb923c;
   }
 }
 
@@ -138,6 +142,14 @@ h2 {
   color: var(--text-h);
   font-size: 18px;
   margin: 0 0 4px;
+}
+
+.vishraam-light {
+  color: var(--vishraam-light);
+}
+
+.vishraam-heavy {
+  color: var(--vishraam-heavy);
 }
 
 .translation {
