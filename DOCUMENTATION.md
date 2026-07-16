@@ -54,9 +54,15 @@ sources/texts, and the table schema.
 /client                        React + Vite frontend
   src/App.jsx                  everything: the api() fetch helper, the ShabadCard
                                 component, and the App component (search form,
-                                results list, favorite/topic UI)
+                                view nav, favorite/topic UI)
   vite.config.js                proxies /api to http://localhost:3001 in dev
 ```
+
+The client has three views, switched with the "Search results" / "â˜… Favorites" / topic
+dropdown nav row: a search view (last search's results), a favorites view (fetches
+`/api/favorites` then each shabad by id), and a topic view (same, via
+`/api/topics/:id/shabads`). The favorites view stays live -- unfavoriting a card there
+removes it immediately by filtering `browseResults` against `favoriteIds`, no refetch needed.
 
 Deliberately kept flat: one file per concern (db, server, UI) rather than splitting
 into many small route/component files. Re-split only if a file actually gets hard to
@@ -141,6 +147,13 @@ treat AI search as an *online-enhanced* layer on top of the offline-first core â
 first-letter search always work with no internet; AI search calls out when a connection is
 available. This needs an explicit decision on API keys/costs before building, so it wasn't
 started as part of this scaffold.
+
+## Todos
+
+1. ~~Gurmukhi rendering~~ done
+2. ~~Favorites/Topics browsing UI~~ done
+3. AI search (RAG layer) -- needs a decision on local-embeddings-vs-API-based first
+4. Visual overhaul -- last
 
 ## Known limitations / next steps
 

@@ -12,6 +12,10 @@ async function api(path, options) {
   return res.status === 204 ? null : res.json()
 }
 
+function getShabadsByIds(ids) {
+  return Promise.all(ids.map((id) => api(`/shabads/${id}`)))
+}
+
 function ShabadCard({ shabad, isFavorite, onToggleFavorite, topics, onAddToTopic }) {
   return (
     <article className="shabad-card">
@@ -59,11 +63,16 @@ function ShabadCard({ shabad, isFavorite, onToggleFavorite, topics, onAddToTopic
 export default function App() {
   const [query, setQuery] = useState('')
   const [mode, setMode] = useState('text')
-  const [results, setResults] = useState([])
   const [status, setStatus] = useState('idle')
   const [favoriteIds, setFavoriteIds] = useState(new Set())
   const [topics, setTopics] = useState([])
   const [newTopicName, setNewTopicName] = useState('')
+
+  // Which results are on screen: a search, the favorites list, or one topic.
+  const [view, setView] = useState('search')
+  const [searchResults, setSearchResults] = useState([])
+  const [browseResults, setBrowseResults] = useState([])
+  const [activeTopic, setActiveTopic] = useState(null)
 
   useEffect(() => {
     api('/favorites').then((data) =>
@@ -79,7 +88,37 @@ export default function App() {
     try {
       const params = new URLSearchParams({ q: query.trim(), mode })
       const data = await api(`/shabads/search?${params}`)
-      setResults(data.results)
+      setSearchResults(data.results)
+      setView('search')
+      setStatus('idle')
+    } catch (err) {
+      console.error(err)
+      setStatus('error')
+    }
+  }
+
+  async function handleViewFavorites() {
+    setStatus('loading')
+    try {
+      const data = await api('/favorites')
+      setBrowseResults(await getShabadsByIds(data.favorites.map((f) => f.shabad_id)))
+      setActiveTopic(null)
+      setView('favorites')
+      setStatus('idle')
+    } catch (err) {
+      console.error(err)
+      setStatus('error')
+    }
+  }
+
+  async function handleViewTopic(topicId) {
+    if (!topicId) return
+    setStatus('loading')
+    try {
+      const data = await api(`/topics/${topicId}/shabads`)
+      setBrowseResults(await getShabadsByIds(data.shabadIds))
+      setActiveTopic(topics.find((t) => t.id === Number(topicId)) ?? null)
+      setView('topic')
       setStatus('idle')
     } catch (err) {
       console.error(err)
@@ -118,6 +157,21 @@ export default function App() {
       body: JSON.stringify({ shabadId }),
     })
   }
+
+  // Favorites view stays live: unfavoriting a card removes it immediately.
+  const displayedResults =
+    view === 'search'
+      ? searchResults
+      : view === 'favorites'
+        ? browseResults.filter((s) => favoriteIds.has(s.id))
+        : browseResults
+
+  const emptyMessage =
+    view === 'search'
+      ? 'Search for something to see results.'
+      : view === 'favorites'
+        ? 'No favorites yet — star a shabad to add one.'
+        : 'No shabads in this topic yet.'
 
   return (
     <div className="app">
@@ -161,11 +215,40 @@ export default function App() {
         <button type="submit">Add topic</button>
       </form>
 
-      {status === 'loading' && <p>Searching…</p>}
+      <nav className="view-nav">
+        <button type="button" onClick={() => setView('search')} disabled={view === 'search'}>
+          Search results
+        </button>
+        <button type="button" onClick={handleViewFavorites} disabled={view === 'favorites'}>
+          ★ Favorites
+        </button>
+        <select
+          value={view === 'topic' ? (activeTopic?.id ?? '') : ''}
+          onChange={(e) => handleViewTopic(e.target.value)}
+        >
+          <option value="">View a topic…</option>
+          {topics.map((topic) => (
+            <option key={topic.id} value={topic.id}>
+              {topic.name}
+            </option>
+          ))}
+        </select>
+      </nav>
+
+      <h2>
+        {view === 'search' && 'Search results'}
+        {view === 'favorites' && 'Favorites'}
+        {view === 'topic' && `Topic: ${activeTopic?.name ?? ''}`}
+      </h2>
+
+      {status === 'loading' && <p>Loading…</p>}
       {status === 'error' && <p>Something went wrong. Is the API server running?</p>}
+      {status !== 'loading' && displayedResults.length === 0 && (
+        <p className="empty">{emptyMessage}</p>
+      )}
 
       <div className="results">
-        {results.map((shabad) => (
+        {displayedResults.map((shabad) => (
           <ShabadCard
             key={shabad.id}
             shabad={shabad}

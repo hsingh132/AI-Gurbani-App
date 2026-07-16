@@ -76,6 +76,29 @@ button {
   cursor: pointer;
 }
 
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.view-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+h2 {
+  color: var(--text-h);
+  font-size: 20px;
+  margin: 12px 0;
+}
+
+.empty {
+  font-style: italic;
+}
+
 .shabad-card {
   border: 1px solid var(--border);
   background: var(--card-bg);
