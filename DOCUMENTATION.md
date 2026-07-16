@@ -144,11 +144,12 @@ started as part of this scaffold.
 
 ## Known limitations / next steps
 
-- **Gurmukhi text encoding**: the `gurmukhi` column in the database stores text in an ASCII
-  "GurbaniAkhar"-style font encoding (e.g. `siq nwmu`), not Unicode Gurmukhi script. It reads
-  as garbled Latin characters unless rendered with the matching font, or converted. Shabad OS
-  publishes a conversion library, [`gurmukhi-utils`](https://github.com/shabados/gurmukhi-utils),
-  for this — not yet integrated.
+- ~~Gurmukhi text encoding~~ **Fixed.** The `gurmukhi` column stores text in an ASCII
+  "GurbaniAkhar"-style font encoding (e.g. `siq nwmu`), not Unicode Gurmukhi script. The server
+  now converts it with [`gurmukhi-utils`](https://github.com/shabados/gurmukhi-utils)'s
+  `toUnicode()` before sending it in API responses (see `getFullShabad` in
+  `server/src/index.js`), so the client always receives real Gurmukhi script (ਸਤਿ ਨਾਮੁ). Search
+  still matches against the raw ASCII column, which is unaffected.
 - **Search is `LIKE`-based**, not indexed full-text search. Fine for a scaffold; consider
   SQLite FTS5 if search feels slow once real usage starts.
 - **No auth / single-user assumption** — favorites and topics aren't scoped to a user account.

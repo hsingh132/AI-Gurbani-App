@@ -1,5 +1,6 @@
 import cors from 'cors'
 import express from 'express'
+import { default as gurmukhiUtils } from 'gurmukhi-utils'
 import { gurbaniDb, userDb } from './db.js'
 
 const app = express()
@@ -47,6 +48,9 @@ function getFullShabad(shabadId) {
 
   const lines = linesForShabadStmt.all(shabadId).map((line) => ({
     ...line,
+    // The database stores Gurmukhi in an ASCII font encoding (e.g. "siq nwmu"),
+    // not Unicode script -- convert it for display.
+    gurmukhi: gurmukhiUtils.toUnicode(line.gurmukhi),
     translation: translationForLineStmt.get(line.id)?.translation ?? null,
   }))
 
