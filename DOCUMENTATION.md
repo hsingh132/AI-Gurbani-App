@@ -137,33 +137,52 @@ It decompresses `data/gurbani-database.sqlite.gz` itself on first run.
 | DELETE | `/api/topics/:id/shabads/:shabadId` | untag |
 | POST | `/api/ai-search` | **not implemented**, returns 501 — see below |
 
-## AI agent — plan, not yet built
+## AI agent — finalized plan, not yet built
 
-"Trained on the entire database" isn't quite the right frame — fine-tuning a model on this data
-would be expensive, unnecessary, and go stale. The actual plan is **RAG** (retrieval-augmented
-generation):
+This is a **search feature, not a chatbot** — natural-language queries in ("find me a shabad
+that answers this question about patience"), a ranked list of real shabads out. No chat UI, no
+LLM writing/explaining results, so nothing can be hallucinated — it's pure retrieval.
+"Trained on the entire database" isn't the right frame either — fine-tuning a model on this
+data would be expensive, unnecessary, and go stale. The actual mechanism is **RAG**
+(retrieval-augmented generation), specifically:
 
-1. Embed each shabad's English translation (or a per-shabad summary) into a vector index —
-   candidates: `sqlite-vec` (keeps everything in one SQLite file, stays offline-friendly) or a
-   dedicated local vector store (LanceDB, Chroma).
-2. On a query like "find me a shabad about patience," embed the query and do a similarity
-   search against that index to retrieve real matching shabad IDs — grounded in actual rows,
-   not hallucinated.
-3. Optionally have an LLM explain/rank the retrieved results in natural language.
+1. **Embed every *line*, not every shabad — 141,264 vectors, not 12,730.** A shabad is a
+   multi-line poem (2-10 lines); embedding only the whole thing as one blended vector dilutes a
+   single relevant line's signal (e.g. one line about patience in an 8-line shabad about
+   something else would get lost in the average). Embedding at line granularity catches
+   single-line matches. Text embedded per line: its English translation (the same text already
+   served by `/api/shabads/:id`).
+2. **Provider: Voyage AI**, since Claude has no embeddings endpoint and Anthropic recommends
+   Voyage. Requires a Voyage API key from the user before this can be built — not needed for
+   anything else in the app, so building was deferred until the key is available.
+3. **Cost is a non-issue.** Measured against the actual database: all English translations
+   total ~12.5M characters / **~3.1M tokens**. One-time cost to embed the *entire* corpus, even
+   at Voyage's priciest tier (`voyage-3-large`/`voyage-4-large`, ~$0.18/1M tokens), is under
+   $0.60 -- likely fully covered by Voyage's introductory free-token allowance. Per-query cost
+   (embedding a few words of search text) is negligible.
+4. **No vector database needed.** 141K vectors is small enough to store as blobs in a table in
+   the existing SQLite (or a new local file) and do a plain in-memory cosine-similarity scan in
+   Node at query time -- no `sqlite-vec`, no LanceDB/Chroma. Verify actual scan latency once
+   built; there's headroom to add an index later if it's ever slow.
+5. **Results roll up to shabads.** A search finds the single best-matching *line*, looks up its
+   `shabad_id`, and returns the whole shabad (via the existing `getFullShabad`) -- so results
+   still render as the normal shabad cards, just ranked by their strongest-matching line instead
+   of a blurred per-shabad average. Multiple matching lines in the same shabad dedupe to one
+   card, keeping the best score.
 
-**Known tradeoff to decide later:** doing this fully offline means a local embedding model,
-which is noticeably weaker than an API-based one (e.g. Claude). Recommended approach is to
-treat AI search as an *online-enhanced* layer on top of the offline-first core — keyword and
-first-letter search always work with no internet; AI search calls out when a connection is
-available. This needs an explicit decision on API keys/costs before building, so it wasn't
-started as part of this scaffold.
+**Online-enhanced, not offline-first, and that's fine here.** Keyword/first-letter search
+always works with no internet (already built); AI search is a layer on top that needs Voyage's
+API both to build the index once and to embed each query. This was an explicit, deliberate
+tradeoff given the quality gap between local and API embedding models for matching vague
+natural-language topics to centuries-old text.
 
 ## Todos
 
 1. ~~Gurmukhi rendering~~ done
 2. ~~Favorites/Topics browsing UI~~ done
 3. ~~Vishraam (pause marker) coloring~~ done
-4. AI search (RAG layer) -- needs a decision on local-embeddings-vs-API-based first
+4. AI search (RAG layer) -- plan finalized (see above), blocked on getting a Voyage AI API key
+   before implementation starts
 5. Visual overhaul -- last
 
 ## Known limitations / next steps
