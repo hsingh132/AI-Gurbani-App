@@ -75,9 +75,9 @@ The converted Gurmukhi text still has vishraam markers glued to the end of certa
 the Unicode conversion. `GurmukhiLine` in `client/src/App.jsx` splits each line on spaces,
 strips a trailing marker off any word that has one, and wraps that word in a
 `vishraam-light`/`vishraam-heavy` span (colors: sky blue / orange, in `index.css` as
-`--vishraam-light` / `--vishraam-heavy`). Medium (`,`) is parsed out of the display text the
-same way but currently left uncolored — add a `--vishraam-medium` var + `.vishraam-medium`
-class if a third color is wanted later.
+`--vishraam-light` / `--vishraam-heavy`). Medium (`,`) maps to the same `light` (blue)
+styling as light pauses -- all three marker types are stripped from display, but only two
+colors are used.
 
 ### Why the database is committed as a `.gz`
 

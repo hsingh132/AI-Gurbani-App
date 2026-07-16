@@ -18,8 +18,8 @@ function getShabadsByIds(ids) {
 
 // Vishraams (pause markers) are glued to the end of a word: "." light,
 // "," medium, ";" heavy. Color the word they're attached to and drop the
-// marker itself from display.
-const VISHRAAM_TYPES = { '.': 'light', ',': 'medium', ';': 'heavy' }
+// marker itself from display. Medium shares the light color (both blue).
+const VISHRAAM_TYPES = { '.': 'light', ',': 'light', ';': 'heavy' }
 
 function GurmukhiLine({ text }) {
   const words = text.split(' ')
