@@ -42,6 +42,8 @@ sources/texts, and the table schema.
 
 /scripts
   decompress-db.sh             gunzips data/gurbani-database.sqlite.gz
+  search_cli.py                stdlib-only Python search CLI (no Node/npm needed --
+                                works in Pyto on iPad/iPhone, decompresses the db itself)
 
 /server                        Node + Express API (better-sqlite3, no build step)
   src/index.js                 entry point, mounts routes, port 3001
@@ -88,6 +90,20 @@ cd client && npm run dev   # http://localhost:5173 (proxies /api to the server)
 
 Verified working end-to-end (search, favorite toggle, topic creation) via a scripted browser
 smoke test during scaffolding.
+
+### Running without Node (e.g. from an iPad in Pyto)
+
+The server/client scaffold needs Node.js/npm, which isn't available in Python-only mobile
+environments like Pyto. For those, `scripts/search_cli.py` searches the database directly
+using only `sqlite3` and `gzip` from the Python standard library -- no pip installs, no Node:
+
+```bash
+python3 scripts/search_cli.py "nwnk" --mode text
+python3 scripts/search_cli.py "jsgpq" --mode first-letters
+# or run with no arguments and answer the prompts
+```
+
+It decompresses `data/gurbani-database.sqlite.gz` itself on first run.
 
 ## API (current)
 
