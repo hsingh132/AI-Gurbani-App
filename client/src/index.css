@@ -1,0 +1,123 @@
+:root {
+  --text: #6b6375;
+  --text-h: #08060d;
+  --bg: #fff;
+  --border: #e5e4e7;
+  --card-bg: #f7f6f3;
+  --accent: #aa3bff;
+
+  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
+  font: 16px/145% var(--sans);
+  color-scheme: light dark;
+  color: var(--text);
+  background: var(--bg);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text: #9ca3af;
+    --text-h: #f3f4f6;
+    --bg: #16171d;
+    --border: #2e303a;
+    --card-bg: #1f2028;
+    --accent: #c084fc;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+#root {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 24px 16px 64px;
+}
+
+h1 {
+  color: var(--text-h);
+  font-size: 32px;
+  margin: 0 0 24px;
+}
+
+h3 {
+  color: var(--text-h);
+  margin: 0;
+}
+
+form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+input[type='text'] {
+  flex: 1;
+  min-width: 200px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-h);
+}
+
+button {
+  padding: 8px 14px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.shabad-card {
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 16px;
+  text-align: left;
+}
+
+.shabad-card .meta {
+  margin: 2px 0 10px;
+  font-size: 14px;
+}
+
+.shabad-card .actions {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.lines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.lines li {
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
+}
+
+.lines li:first-child {
+  border-top: none;
+}
+
+.gurmukhi {
+  color: var(--text-h);
+  font-size: 18px;
+  margin: 0 0 4px;
+}
+
+.translation {
+  margin: 0;
+  font-size: 14px;
+}

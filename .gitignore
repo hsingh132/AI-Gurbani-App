@@ -1,1 +1,6 @@
 data/gurbani-database.sqlite
+data/user-data.sqlite
+data/user-data.sqlite-shm
+data/user-data.sqlite-wal
+
+node_modules/
