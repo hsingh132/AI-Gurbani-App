@@ -46,21 +46,21 @@ sources/texts, and the table schema.
                                 works in Pyto on iPad/iPhone, decompresses the db itself)
 
 /server                        Node + Express API (better-sqlite3, no build step)
-  src/index.js                 entry point, mounts routes, port 3001
-  src/db/gurbani.js            read-only connection to the reference database
-  src/db/userData.js           read-write connection to user-data.sqlite, creates
-                                favorites/topics/topic_shabads tables on first run
-  src/routes/shabads.js        search (text + first-letters) and shabad detail
-  src/routes/favorites.js      favorite CRUD
-  src/routes/topics.js         topic CRUD + shabad tagging
-  src/routes/aiSearch.js       stub only — see "AI agent" below
+  src/db.js                    both database connections: read-only gurbaniDb, and
+                                userDb (favorites/topics tables, created on first run)
+  src/index.js                 entry point + every route (search, shabad detail,
+                                favorites, topics, ai-search stub), all in one file
 
 /client                        React + Vite frontend
-  src/App.jsx                  search form, results list, favorite/topic UI
-  src/ShabadCard.jsx           renders one shabad: header, lines, translations
-  src/api.js                   fetch wrappers for the server API
+  src/App.jsx                  everything: the api() fetch helper, the ShabadCard
+                                component, and the App component (search form,
+                                results list, favorite/topic UI)
   vite.config.js                proxies /api to http://localhost:3001 in dev
 ```
+
+Deliberately kept flat: one file per concern (db, server, UI) rather than splitting
+into many small route/component files. Re-split only if a file actually gets hard to
+navigate — not preemptively.
 
 ### Why the database is committed as a `.gz`
 
