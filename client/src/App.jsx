@@ -108,8 +108,10 @@ export default function App() {
     if (!query.trim()) return
     setStatus('loading')
     try {
-      const params = new URLSearchParams({ q: query.trim(), mode })
-      const data = await api(`/shabads/search?${params}`)
+      const data =
+        mode === 'ai'
+          ? await api('/ai-search', { method: 'POST', body: JSON.stringify({ q: query.trim() }) })
+          : await api(`/shabads/search?${new URLSearchParams({ q: query.trim(), mode })}`)
       setSearchResults(data.results)
       setView('search')
       setStatus('idle')
@@ -204,7 +206,13 @@ export default function App() {
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder={mode === 'first-letters' ? 'e.g. snkpnn' : 'Search Gurmukhi text…'}
+          placeholder={
+            mode === 'first-letters'
+              ? 'e.g. snkpnn'
+              : mode === 'ai'
+                ? 'Describe what you’re looking for…'
+                : 'Search Gurmukhi text…'
+          }
         />
         <label>
           <input
@@ -223,6 +231,10 @@ export default function App() {
             onChange={() => setMode('first-letters')}
           />
           First letters
+        </label>
+        <label>
+          <input type="radio" name="mode" checked={mode === 'ai'} onChange={() => setMode('ai')} />
+          AI search
         </label>
         <button type="submit">Search</button>
       </form>

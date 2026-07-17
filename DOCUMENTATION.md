@@ -13,8 +13,9 @@ Nand Lal's Baani, with:
 - Full-text and first-letter-of-each-word search (e.g. searching `snkpnn` for the Mool Mantar)
 - A favorites feature (bookmark individual shabads)
 - A topics feature (tag/group shabads into custom topics, many-to-many)
-- Eventually, an AI agent that can answer questions like "find me a shabad about patience" by
-  searching the meaning of shabads, not just literal text matches
+- An AI search mode that answers questions like "find me a shabad about patience" by searching
+  the meaning of shabads, not just literal text matches (built; see "AI agent" below for the
+  one remaining setup step)
 
 ## Data source decision
 
@@ -38,6 +39,8 @@ sources/texts, and the table schema.
   gurbani-database.sqlite.gz   tracked in git — the reference database, compressed
   gurbani-database.sqlite      gitignored — regenerate with scripts/decompress-db.sh
   user-data.sqlite             gitignored — created at runtime, holds favorites/topics
+  embeddings.sqlite            gitignored — created by server/scripts/build-embeddings.js,
+                                holds one vector per line for AI search
   README.md                    data source, license, schema details
 
 /scripts
@@ -46,10 +49,22 @@ sources/texts, and the table schema.
                                 works in Pyto on iPad/iPhone, decompresses the db itself)
 
 /server                        Node + Express API (better-sqlite3, no build step)
+  .env                          gitignored — holds VOYAGE_API_KEY, loaded via
+                                `node --env-file=.env` in the dev/start/build-embeddings scripts
   src/db.js                    both database connections: read-only gurbaniDb, and
                                 userDb (favorites/topics tables, created on first run)
+  src/embeddingsDb.js          the AI-search vector store: opens/creates
+                                data/embeddings.sqlite (one line_embeddings table)
+  src/voyage.js                Voyage AI embeddings client (embedDocuments / embedQuery),
+                                model + dimension + API URL all overridable via env vars
+  src/semanticSearch.js        loads all line vectors into memory once, brute-force
+                                cosine-similarity scan per query, rolls results up to
+                                shabad IDs by best-matching line
+  scripts/build-embeddings.js  one-time (re-)build: embeds every line's English
+                                translation via Voyage, populates embeddings.sqlite --
+                                run with `npm run build-embeddings`
   src/index.js                 entry point + every route (search, shabad detail,
-                                favorites, topics, ai-search stub), all in one file
+                                favorites, topics, AI search), all in one file
 
 /client                        React + Vite frontend
   src/App.jsx                  everything: the api() fetch helper, the ShabadCard
@@ -135,55 +150,72 @@ It decompresses `data/gurbani-database.sqlite.gz` itself on first run.
 | GET | `/api/topics/:id/shabads` | shabad IDs in a topic |
 | POST | `/api/topics/:id/shabads` | body `{ shabadId }`, tag a shabad into a topic |
 | DELETE | `/api/topics/:id/shabads/:shabadId` | untag |
-| POST | `/api/ai-search` | **not implemented**, returns 501 — see below |
+| POST | `/api/ai-search` | body `{ q }`, natural-language semantic search -- see below |
 
-## AI agent — finalized plan, not yet built
+## AI agent — built
 
-This is a **search feature, not a chatbot** — natural-language queries in ("find me a shabad
-that answers this question about patience"), a ranked list of real shabads out. No chat UI, no
-LLM writing/explaining results, so nothing can be hallucinated — it's pure retrieval.
-"Trained on the entire database" isn't the right frame either — fine-tuning a model on this
-data would be expensive, unnecessary, and go stale. The actual mechanism is **RAG**
-(retrieval-augmented generation), specifically:
+A **search feature, not a chatbot** — natural-language queries in ("find me a shabad that
+answers this question about patience"), a ranked list of real shabads out. No chat UI, no LLM
+writing/explaining results, so nothing can be hallucinated — it's pure retrieval (RAG:
+retrieval-augmented generation, not fine-tuning).
 
-1. **Embed every *line*, not every shabad — 141,264 vectors, not 12,730.** A shabad is a
-   multi-line poem (2-10 lines); embedding only the whole thing as one blended vector dilutes a
-   single relevant line's signal (e.g. one line about patience in an 8-line shabad about
-   something else would get lost in the average). Embedding at line granularity catches
-   single-line matches. Text embedded per line: its English translation (the same text already
-   served by `/api/shabads/:id`).
-2. **Provider: Voyage AI**, since Claude has no embeddings endpoint and Anthropic recommends
-   Voyage. Requires a Voyage API key from the user before this can be built — not needed for
-   anything else in the app, so building was deferred until the key is available.
-3. **Cost is a non-issue.** Measured against the actual database: all English translations
-   total ~12.5M characters / **~3.1M tokens**. One-time cost to embed the *entire* corpus, even
-   at Voyage's priciest tier (`voyage-3-large`/`voyage-4-large`, ~$0.18/1M tokens), is under
-   $0.60 -- likely fully covered by Voyage's introductory free-token allowance. Per-query cost
-   (embedding a few words of search text) is negligible.
-4. **No vector database needed.** 141K vectors is small enough to store as blobs in a table in
-   the existing SQLite (or a new local file) and do a plain in-memory cosine-similarity scan in
-   Node at query time -- no `sqlite-vec`, no LanceDB/Chroma. Verify actual scan latency once
-   built; there's headroom to add an index later if it's ever slow.
-5. **Results roll up to shabads.** A search finds the single best-matching *line*, looks up its
-   `shabad_id`, and returns the whole shabad (via the existing `getFullShabad`) -- so results
-   still render as the normal shabad cards, just ranked by their strongest-matching line instead
-   of a blurred per-shabad average. Multiple matching lines in the same shabad dedupe to one
-   card, keeping the best score.
+How it works, matching the finalized plan:
+
+1. **Every *line* is embedded, not each shabad — 141,264 vectors, not 12,730.** A shabad is a
+   multi-line poem (2-10 lines); embedding only the whole thing as one blended vector would
+   dilute a single relevant line's signal. Text embedded per line: its English translation
+   (confirmed via `server/scripts/build-embeddings.js`'s query -- every one of the 141,264 lines
+   has exactly one English translation, so nothing gets skipped).
+2. **Provider: Voyage AI** (`server/src/voyage.js`). Model, output dimension, and even the API
+   URL are all overridable via env vars (`VOYAGE_MODEL`, `VOYAGE_OUTPUT_DIMENSION`,
+   `VOYAGE_API_URL`) -- the URL override is what let this get built and tested in an environment
+   where `api.voyageai.com` is network-blocked, by pointing at a local mock server that mimics
+   Voyage's response shape. Default model is `voyage-4-large`; if that ID turns out to be wrong
+   when the real build runs, set `VOYAGE_MODEL` in `server/.env` to whatever's current at
+   [docs.voyageai.com](https://docs.voyageai.com/docs/embeddings).
+3. **No vector database.** `server/src/semanticSearch.js` loads every line's vector into one
+   flat `Float32Array` on first use and does a brute-force cosine-similarity scan per query --
+   no `sqlite-vec`, no LanceDB/Chroma. Verified working end-to-end with a mock Voyage server:
+   seeded 3 real lines from 3 different real shabads with distinct keyword content, confirmed a
+   "patience" query and a "fear" query each correctly ranked their matching shabad first.
+4. **Results roll up to shabads.** A search finds the single best-matching *line*, looks up its
+   `shabad_id`, and returns the whole shabad via the existing `getFullShabad` -- so AI search
+   results render as the exact same shabad cards as regular search, just ranked by their
+   strongest-matching line. Multiple matching lines in one shabad dedupe to a single card,
+   keeping the best score.
+5. **Client**: a third radio option ("AI search") next to Text / First letters in the search
+   form, `client/src/App.jsx`. Same results list/rendering as the other two modes.
+
+**The one thing not yet done: actually building the index against the real API.** The API
+itself is network-blocked in the environment this was built in, so the actual
+`npm run build-embeddings` run (embeds all 141,264 lines for real, costs well under $1, takes a
+few minutes) needs to happen wherever `server/.env` and normal internet access both exist. Until
+that's run once, `/api/ai-search` returns a `503` telling you exactly that.
+
+**Setup needed before the real build will work:**
+
+```bash
+# server/.env (gitignored) needs:
+VOYAGE_API_KEY=pa-...
+
+cd server
+npm install          # picks up nothing new -- voyage.js uses native fetch, no new deps
+npm run build-embeddings   # one-time, costs well under $1, takes a few minutes
+```
 
 **Online-enhanced, not offline-first, and that's fine here.** Keyword/first-letter search
-always works with no internet (already built); AI search is a layer on top that needs Voyage's
-API both to build the index once and to embed each query. This was an explicit, deliberate
-tradeoff given the quality gap between local and API embedding models for matching vague
-natural-language topics to centuries-old text.
+always works with no internet; AI search needs Voyage's API both to build the index once and to
+embed each query afterward. Deliberate tradeoff, given the quality gap between local and API
+embedding models for matching vague natural-language topics to centuries-old text.
 
 ## Todos
 
 1. ~~Gurmukhi rendering~~ done
 2. ~~Favorites/Topics browsing UI~~ done
 3. ~~Vishraam (pause marker) coloring~~ done
-4. AI search (RAG layer) -- plan finalized (see above), blocked on getting a Voyage AI API key
-   before implementation starts
-5. Visual overhaul -- last
+4. ~~AI search (RAG layer)~~ code done, verified against a mock Voyage server -- the real
+   `npm run build-embeddings` run against the live API is the one remaining step (see above)
+5. Visual overhaul -- last, not started
 
 ## Known limitations / next steps
 
@@ -199,4 +231,5 @@ natural-language topics to centuries-old text.
   Fine for a personal app; would need addressing if this ever becomes multi-user.
 - **Translations are English-only** in the current API (`language_id = 1`); the database has
   Punjabi, Spanish, Hindi, and Urdu translation sources too (see `data/README.md`).
-- **AI search**: see above, fully unbuilt.
+- **AI search**: code complete, but the real embedding build hasn't been run against the live
+  Voyage API yet (see the AI agent section above for the exact command).

@@ -2,6 +2,7 @@ import cors from 'cors'
 import express from 'express'
 import { default as gurmukhiUtils } from 'gurmukhi-utils'
 import { gurbaniDb, userDb } from './db.js'
+import { semanticSearch } from './semanticSearch.js'
 
 const app = express()
 const PORT = process.env.PORT ?? 3001
@@ -137,11 +138,29 @@ app.delete('/api/topics/:id/shabads/:shabadId', (req, res) => {
   res.status(204).end()
 })
 
-// --- AI search: not implemented yet. Planned as retrieval-augmented search
-// over embedded translations -- see DOCUMENTATION.md.
+// --- AI search: semantic search over line-level embeddings (see
+// scripts/build-embeddings.js and DOCUMENTATION.md).
 
-app.post('/api/ai-search', (_req, res) => {
-  res.status(501).json({ error: 'AI search is not implemented yet' })
+app.post('/api/ai-search', async (req, res) => {
+  if (!process.env.VOYAGE_API_KEY) {
+    return res.status(501).json({ error: 'AI search is not configured (missing VOYAGE_API_KEY)' })
+  }
+
+  const q = (req.body?.q ?? '').toString().trim()
+  if (!q) return res.json({ results: [] })
+
+  try {
+    const shabadIds = await semanticSearch(q)
+    if (shabadIds === null) {
+      return res
+        .status(503)
+        .json({ error: 'Embeddings not built yet -- run `npm run build-embeddings` in server/' })
+    }
+    res.json({ results: shabadIds.map(getFullShabad) })
+  } catch (err) {
+    console.error(err)
+    res.status(502).json({ error: `AI search failed: ${err.message}` })
+  }
 })
 
 app.listen(PORT, () => {
