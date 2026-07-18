@@ -161,11 +161,19 @@ retrieval-augmented generation, not fine-tuning).
 
 How it works, matching the finalized plan:
 
-1. **Every *line* is embedded, not each shabad — 141,264 vectors, not 12,730.** A shabad is a
+1. **Every *line* is embedded, not each shabad — 106,433 vectors, not 12,730.** A shabad is a
    multi-line poem (2-10 lines); embedding only the whole thing as one blended vector would
-   dilute a single relevant line's signal. Text embedded per line: its English translation
-   (confirmed via `server/scripts/build-embeddings.js`'s query -- every one of the 141,264 lines
-   has exactly one English translation, so nothing gets skipped).
+   dilute a single relevant line's signal. Text embedded per line: its English translation. Not
+   all 141,264 lines have one, though -- 34,758 have no English translation from any source at
+   all (a real gap in Shabad OS's community translation coverage, confirmed by checking every
+   source per line, not fixable from this app). `build-embeddings.js`'s query picks the first
+   *non-empty* English source per line and skips a line entirely if none exist, rather than
+   picking whichever source has the lowest ID regardless of whether it's blank -- the first cut
+   of this query did the latter and crashed the real build (Voyage's API flatly rejects empty
+   strings). The same non-empty-preferring fix was applied to the live `/api/shabads/:id`
+   translation lookup in `server/src/index.js` for consistency, though on inspection that one
+   wasn't actually exhibiting the bug in practice (lines with any real translation only ever
+   have it at the lowest source ID already, so the two queries were coincidentally consistent).
 2. **Provider: Voyage AI** (`server/src/voyage.js`). Model, output dimension, and even the API
    URL are all overridable via env vars (`VOYAGE_MODEL`, `VOYAGE_OUTPUT_DIMENSION`,
    `VOYAGE_API_URL`) -- the URL override is what let this get built and tested in an environment
@@ -177,7 +185,9 @@ How it works, matching the finalized plan:
    flat `Float32Array` on first use and does a brute-force cosine-similarity scan per query --
    no `sqlite-vec`, no LanceDB/Chroma. Verified working end-to-end with a mock Voyage server:
    seeded 3 real lines from 3 different real shabads with distinct keyword content, confirmed a
-   "patience" query and a "fear" query each correctly ranked their matching shabad first.
+   "patience" query and a "fear" query each correctly ranked their matching shabad first. After
+   the empty-translation fix, also ran the full corrected `build-embeddings.js` query (all
+   106,433 lines) against the mock end-to-end with no errors.
 4. **Results roll up to shabads.** A search finds the single best-matching *line*, looks up its
    `shabad_id`, and returns the whole shabad via the existing `getFullShabad` -- so AI search
    results render as the exact same shabad cards as regular search, just ranked by their
@@ -188,9 +198,10 @@ How it works, matching the finalized plan:
 
 **The one thing not yet done: actually building the index against the real API.** The API
 itself is network-blocked in the environment this was built in, so the actual
-`npm run build-embeddings` run (embeds all 141,264 lines for real, costs well under $1, takes a
-few minutes) needs to happen wherever `server/.env` and normal internet access both exist. Until
-that's run once, `/api/ai-search` returns a `503` telling you exactly that.
+`npm run build-embeddings` run (embeds all 106,433 lines that have an English translation,
+costs well under $1, takes a few minutes) needs to happen wherever `server/.env` and normal
+internet access both exist. Until that's run once, `/api/ai-search` returns a `503` telling you
+exactly that.
 
 **Setup needed before the real build will work:**
 

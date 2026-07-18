@@ -10,6 +10,11 @@ import { EMBEDDING_DIMENSION, EMBEDDING_MODEL, embedDocuments } from '../src/voy
 const BATCH_SIZE = 100
 
 async function main() {
+  // Some lines have no English translation at all in any source (a real gap
+  // in the upstream data), and a few have a blank translation from one
+  // source but a real one from another -- exclude empty strings before
+  // picking, not after, so we get the first non-empty source per line
+  // (falling back to skipping the line entirely if none exist).
   const rows = gurbaniDb
     .prepare(
       `
@@ -19,7 +24,7 @@ async function main() {
         FROM lines l
         JOIN translations t ON t.line_id = l.id
         JOIN translation_sources ts ON ts.id = t.translation_source_id
-        WHERE ts.language_id = 1
+        WHERE ts.language_id = 1 AND trim(t.translation) != ''
       )
       WHERE rn = 1
       `

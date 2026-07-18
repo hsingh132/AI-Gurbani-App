@@ -34,12 +34,15 @@ const linesForShabadStmt = gurbaniDb.prepare(`
   ORDER BY order_id
 `)
 
-// English translation only, for scaffold simplicity
+// English translation only, for scaffold simplicity. Some lines have a blank
+// translation from one source but a real one from another -- prefer the
+// first non-empty source, falling back to null only if every source is blank.
 const translationForLineStmt = gurbaniDb.prepare(`
   SELECT t.translation
   FROM translations t
   JOIN translation_sources ts ON ts.id = t.translation_source_id
-  WHERE t.line_id = ? AND ts.language_id = 1
+  WHERE t.line_id = ? AND ts.language_id = 1 AND trim(t.translation) != ''
+  ORDER BY t.translation_source_id
   LIMIT 1
 `)
 
