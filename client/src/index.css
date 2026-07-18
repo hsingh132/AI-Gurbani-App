@@ -7,6 +7,7 @@
   --accent: #aa3bff;
   --vishraam-light: #0ea5e9;
   --vishraam-heavy: #f97316;
+  --highlight-bg: rgba(170, 59, 255, 0.12);
 
   --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
   font: 16px/145% var(--sans);
@@ -25,6 +26,7 @@
     --accent: #c084fc;
     --vishraam-light: #38bdf8;
     --vishraam-heavy: #fb923c;
+    --highlight-bg: rgba(192, 132, 252, 0.16);
   }
 }
 
@@ -138,10 +140,42 @@ h2 {
   border-top: none;
 }
 
+.lines li.highlighted {
+  background: var(--highlight-bg);
+  margin: 0 -16px;
+  padding: 8px 16px;
+  border-radius: 6px;
+}
+
 .gurmukhi {
   color: var(--text-h);
   font-size: 18px;
   margin: 0 0 4px;
+}
+
+.result-line {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 0 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.result-line:hover .gurmukhi {
+  text-decoration: underline;
+}
+
+.back-link {
+  display: inline-block;
+  margin-bottom: 12px;
+  padding: 4px 0;
+  border: none;
+  background: none;
+  color: var(--accent);
 }
 
 .vishraam-light {

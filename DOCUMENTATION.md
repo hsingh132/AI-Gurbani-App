@@ -78,6 +78,15 @@ dropdown nav row: a search view (last search's results), a favorites view (fetch
 `/api/topics/:id/shabads`). The favorites view stays live -- unfavoriting a card there
 removes it immediately by filtering `browseResults` against `favoriteIds`, no refetch needed.
 
+**Search results show one line, not the whole shabad.** All three search modes (text,
+first-letters, AI) return one matching line per shabad -- `SearchResultRow` renders just that
+line, clickable. Clicking it fetches the full shabad via `GET /api/shabads/:id` and switches to
+a detail view (`openShabad` + `highlightLineId` state) showing every line, with the one that
+matched visually highlighted (`.lines li.highlighted`, `--highlight-bg` in `index.css`). A "←
+Back to results" link returns to the compact list without re-searching. Favorites/topics
+browsing is unaffected -- those still render full multi-line `ShabadCard`s directly, since
+there's no single "matching line" concept for a favorited/tagged shabad.
+
 Deliberately kept flat: one file per concern (db, server, UI) rather than splitting
 into many small route/component files. Re-split only if a file actually gets hard to
 navigate — not preemptively.
@@ -139,8 +148,8 @@ It decompresses `data/gurbani-database.sqlite.gz` itself on first run.
 
 | Method | Path | What |
 |---|---|---|
-| GET | `/api/shabads/search?q=&mode=text\|first-letters` | search, returns full shabads |
-| GET | `/api/shabads/:id` | one shabad with lines + English translations |
+| GET | `/api/shabads/search?q=&mode=text\|first-letters` | search, one matching `line` per shabad (not the full shabad) |
+| GET | `/api/shabads/:id` | one shabad, every line, with English translations |
 | GET | `/api/favorites` | list favorited shabad IDs |
 | POST | `/api/favorites` | body `{ shabadId }` |
 | DELETE | `/api/favorites/:shabadId` | remove a favorite |

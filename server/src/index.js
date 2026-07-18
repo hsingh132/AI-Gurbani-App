@@ -46,19 +46,38 @@ const translationForLineStmt = gurbaniDb.prepare(`
   LIMIT 1
 `)
 
-function getFullShabad(shabadId) {
-  const header = shabadHeaderStmt.get(shabadId)
-  if (!header) return null
+const lineByIdStmt = gurbaniDb.prepare(`
+  SELECT id, gurmukhi, pronunciation, first_letters, source_page, source_line, type_id, order_id
+  FROM lines
+  WHERE id = ?
+`)
 
-  const lines = linesForShabadStmt.all(shabadId).map((line) => ({
+function toDisplayLine(line) {
+  return {
     ...line,
     // The database stores Gurmukhi in an ASCII font encoding (e.g. "siq nwmu"),
     // not Unicode script -- convert it for display.
     gurmukhi: gurmukhiUtils.toUnicode(line.gurmukhi),
     translation: translationForLineStmt.get(line.id)?.translation ?? null,
-  }))
+  }
+}
 
+function getFullShabad(shabadId) {
+  const header = shabadHeaderStmt.get(shabadId)
+  if (!header) return null
+
+  const lines = linesForShabadStmt.all(shabadId).map(toDisplayLine)
   return { ...header, lines }
+}
+
+// Search results show one matching line per shabad, not the whole thing --
+// the client fetches the full shabad (getFullShabad, via GET /shabads/:id)
+// only when that line is clicked.
+function getShabadWithMatchedLine(shabadId, lineId) {
+  const header = shabadHeaderStmt.get(shabadId)
+  const line = lineByIdStmt.get(lineId)
+  if (!header || !line) return null
+  return { ...header, line: toDisplayLine(line) }
 }
 
 app.get('/api/shabads/search', (req, res) => {
@@ -68,12 +87,24 @@ app.get('/api/shabads/search', (req, res) => {
 
   const column = mode === 'first-letters' ? 'first_letters' : 'gurmukhi'
   const pattern = mode === 'first-letters' ? `${q}%` : `%${q}%`
-  const shabadIds = gurbaniDb
-    .prepare(`SELECT DISTINCT shabad_id FROM lines WHERE ${column} LIKE ? LIMIT 40`)
+  // One matching line per shabad (the earliest one in reading order), not
+  // an arbitrary row -- matches ROW_NUMBER's determinism elsewhere in the app.
+  const matches = gurbaniDb
+    .prepare(
+      `
+      SELECT line_id, shabad_id FROM (
+        SELECT id AS line_id, shabad_id,
+          ROW_NUMBER() OVER (PARTITION BY shabad_id ORDER BY order_id) AS rn
+        FROM lines
+        WHERE ${column} LIKE ?
+      )
+      WHERE rn = 1
+      LIMIT 40
+      `
+    )
     .all(pattern)
-    .map((r) => r.shabad_id)
 
-  res.json({ results: shabadIds.map(getFullShabad) })
+  res.json({ results: matches.map((m) => getShabadWithMatchedLine(m.shabad_id, m.line_id)) })
 })
 
 app.get('/api/shabads/:id', (req, res) => {
@@ -153,13 +184,15 @@ app.post('/api/ai-search', async (req, res) => {
   if (!q) return res.json({ results: [] })
 
   try {
-    const shabadIds = await semanticSearch(q)
-    if (shabadIds === null) {
+    const matches = await semanticSearch(q)
+    if (matches === null) {
       return res
         .status(503)
         .json({ error: 'Embeddings not built yet -- run `npm run build-embeddings` in server/' })
     }
-    res.json({ results: shabadIds.map(getFullShabad) })
+    res.json({
+      results: matches.map(({ shabadId, lineId }) => getShabadWithMatchedLine(shabadId, lineId)),
+    })
   } catch (err) {
     console.error(err)
     res.status(502).json({ error: `AI search failed: ${err.message}` })

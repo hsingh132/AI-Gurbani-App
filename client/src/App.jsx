@@ -36,41 +36,56 @@ function GurmukhiLine({ text }) {
   })
 }
 
-function ShabadCard({ shabad, isFavorite, onToggleFavorite, topics, onAddToTopic }) {
+function ShabadHeader({ shabad, isFavorite, onToggleFavorite, topics, onAddToTopic }) {
+  return (
+    <header>
+      <h3>{shabad.source_name}</h3>
+      <p className="meta">
+        {shabad.writer_name ?? 'Unknown writer'} &middot; {shabad.section_name}
+      </p>
+      <div className="actions">
+        <button type="button" onClick={() => onToggleFavorite(shabad.id)}>
+          {isFavorite ? '★ Favorited' : '☆ Favorite'}
+        </button>
+        {topics.length > 0 && (
+          <select
+            defaultValue=""
+            onChange={(e) => {
+              if (e.target.value) onAddToTopic(Number(e.target.value), shabad.id)
+              e.target.value = ''
+            }}
+          >
+            <option value="" disabled>
+              Add to topic…
+            </option>
+            {topics.map((topic) => (
+              <option key={topic.id} value={topic.id}>
+                {topic.name}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
+    </header>
+  )
+}
+
+// Full shabad, every line -- used for favorites/topics and the expanded
+// detail view opened from a search result. highlightLineId marks the
+// specific line that matched a search, if any.
+function ShabadCard({ shabad, isFavorite, onToggleFavorite, topics, onAddToTopic, highlightLineId }) {
   return (
     <article className="shabad-card">
-      <header>
-        <h3>{shabad.source_name}</h3>
-        <p className="meta">
-          {shabad.writer_name ?? 'Unknown writer'} &middot; {shabad.section_name}
-        </p>
-        <div className="actions">
-          <button type="button" onClick={() => onToggleFavorite(shabad.id)}>
-            {isFavorite ? '★ Favorited' : '☆ Favorite'}
-          </button>
-          {topics.length > 0 && (
-            <select
-              defaultValue=""
-              onChange={(e) => {
-                if (e.target.value) onAddToTopic(Number(e.target.value), shabad.id)
-                e.target.value = ''
-              }}
-            >
-              <option value="" disabled>
-                Add to topic…
-              </option>
-              {topics.map((topic) => (
-                <option key={topic.id} value={topic.id}>
-                  {topic.name}
-                </option>
-              ))}
-            </select>
-          )}
-        </div>
-      </header>
+      <ShabadHeader
+        shabad={shabad}
+        isFavorite={isFavorite}
+        onToggleFavorite={onToggleFavorite}
+        topics={topics}
+        onAddToTopic={onAddToTopic}
+      />
       <ol className="lines">
         {shabad.lines.map((line) => (
-          <li key={line.id}>
+          <li key={line.id} className={line.id === highlightLineId ? 'highlighted' : undefined}>
             <p className="gurmukhi">
               <GurmukhiLine text={line.gurmukhi} />
             </p>
@@ -78,6 +93,28 @@ function ShabadCard({ shabad, isFavorite, onToggleFavorite, topics, onAddToTopic
           </li>
         ))}
       </ol>
+    </article>
+  )
+}
+
+// Search result: just the one matching line, not the whole shabad. Click it
+// to open the full shabad with that line highlighted.
+function SearchResultRow({ shabad, isFavorite, onToggleFavorite, topics, onAddToTopic, onOpen }) {
+  return (
+    <article className="shabad-card">
+      <ShabadHeader
+        shabad={shabad}
+        isFavorite={isFavorite}
+        onToggleFavorite={onToggleFavorite}
+        topics={topics}
+        onAddToTopic={onAddToTopic}
+      />
+      <button type="button" className="result-line" onClick={() => onOpen(shabad.id, shabad.line.id)}>
+        <p className="gurmukhi">
+          <GurmukhiLine text={shabad.line.gurmukhi} />
+        </p>
+        {shabad.line.translation && <p className="translation">{shabad.line.translation}</p>}
+      </button>
     </article>
   )
 }
@@ -96,6 +133,11 @@ export default function App() {
   const [browseResults, setBrowseResults] = useState([])
   const [activeTopic, setActiveTopic] = useState(null)
 
+  // A search result that's been clicked open: the full shabad plus which
+  // line to highlight. Only relevant within the search view.
+  const [openShabad, setOpenShabad] = useState(null)
+  const [highlightLineId, setHighlightLineId] = useState(null)
+
   useEffect(() => {
     api('/favorites').then((data) =>
       setFavoriteIds(new Set(data.favorites.map((f) => f.shabad_id)))
@@ -113,6 +155,8 @@ export default function App() {
           ? await api('/ai-search', { method: 'POST', body: JSON.stringify({ q: query.trim() }) })
           : await api(`/shabads/search?${new URLSearchParams({ q: query.trim(), mode })}`)
       setSearchResults(data.results)
+      setOpenShabad(null)
+      setHighlightLineId(null)
       setView('search')
       setStatus('idle')
     } catch (err) {
@@ -121,12 +165,32 @@ export default function App() {
     }
   }
 
+  async function handleOpenShabad(shabadId, lineId) {
+    setStatus('loading')
+    try {
+      const shabad = await api(`/shabads/${shabadId}`)
+      setOpenShabad(shabad)
+      setHighlightLineId(lineId)
+      setStatus('idle')
+    } catch (err) {
+      console.error(err)
+      setStatus('error')
+    }
+  }
+
+  function handleCloseShabad() {
+    setOpenShabad(null)
+    setHighlightLineId(null)
+  }
+
   async function handleViewFavorites() {
     setStatus('loading')
     try {
       const data = await api('/favorites')
       setBrowseResults(await getShabadsByIds(data.favorites.map((f) => f.shabad_id)))
       setActiveTopic(null)
+      setOpenShabad(null)
+      setHighlightLineId(null)
       setView('favorites')
       setStatus('idle')
     } catch (err) {
@@ -142,6 +206,8 @@ export default function App() {
       const data = await api(`/topics/${topicId}/shabads`)
       setBrowseResults(await getShabadsByIds(data.shabadIds))
       setActiveTopic(topics.find((t) => t.id === Number(topicId)) ?? null)
+      setOpenShabad(null)
+      setHighlightLineId(null)
       setView('topic')
       setStatus('idle')
     } catch (err) {
@@ -197,6 +263,8 @@ export default function App() {
         ? 'No favorites yet — star a shabad to add one.'
         : 'No shabads in this topic yet.'
 
+  const showingShabadDetail = view === 'search' && openShabad
+
   return (
     <div className="app">
       <h1>Gurbani Search</h1>
@@ -250,7 +318,15 @@ export default function App() {
       </form>
 
       <nav className="view-nav">
-        <button type="button" onClick={() => setView('search')} disabled={view === 'search'}>
+        <button
+          type="button"
+          onClick={() => {
+            setView('search')
+            setOpenShabad(null)
+            setHighlightLineId(null)
+          }}
+          disabled={view === 'search' && !openShabad}
+        >
           Search results
         </button>
         <button type="button" onClick={handleViewFavorites} disabled={view === 'favorites'}>
@@ -269,30 +345,62 @@ export default function App() {
         </select>
       </nav>
 
-      <h2>
-        {view === 'search' && 'Search results'}
-        {view === 'favorites' && 'Favorites'}
-        {view === 'topic' && `Topic: ${activeTopic?.name ?? ''}`}
-      </h2>
+      {showingShabadDetail ? (
+        <>
+          <button type="button" className="back-link" onClick={handleCloseShabad}>
+            ← Back to results
+          </button>
+          <div className="results">
+            <ShabadCard
+              shabad={openShabad}
+              isFavorite={favoriteIds.has(openShabad.id)}
+              onToggleFavorite={handleToggleFavorite}
+              topics={topics}
+              onAddToTopic={handleAddToTopic}
+              highlightLineId={highlightLineId}
+            />
+          </div>
+        </>
+      ) : (
+        <>
+          <h2>
+            {view === 'search' && 'Search results'}
+            {view === 'favorites' && 'Favorites'}
+            {view === 'topic' && `Topic: ${activeTopic?.name ?? ''}`}
+          </h2>
 
-      {status === 'loading' && <p>Loading…</p>}
-      {status === 'error' && <p>Something went wrong. Is the API server running?</p>}
-      {status !== 'loading' && displayedResults.length === 0 && (
-        <p className="empty">{emptyMessage}</p>
+          {status === 'loading' && <p>Loading…</p>}
+          {status === 'error' && <p>Something went wrong. Is the API server running?</p>}
+          {status !== 'loading' && displayedResults.length === 0 && (
+            <p className="empty">{emptyMessage}</p>
+          )}
+
+          <div className="results">
+            {displayedResults.map((shabad) =>
+              view === 'search' ? (
+                <SearchResultRow
+                  key={shabad.id}
+                  shabad={shabad}
+                  isFavorite={favoriteIds.has(shabad.id)}
+                  onToggleFavorite={handleToggleFavorite}
+                  topics={topics}
+                  onAddToTopic={handleAddToTopic}
+                  onOpen={handleOpenShabad}
+                />
+              ) : (
+                <ShabadCard
+                  key={shabad.id}
+                  shabad={shabad}
+                  isFavorite={favoriteIds.has(shabad.id)}
+                  onToggleFavorite={handleToggleFavorite}
+                  topics={topics}
+                  onAddToTopic={handleAddToTopic}
+                />
+              )
+            )}
+          </div>
+        </>
       )}
-
-      <div className="results">
-        {displayedResults.map((shabad) => (
-          <ShabadCard
-            key={shabad.id}
-            shabad={shabad}
-            isFavorite={favoriteIds.has(shabad.id)}
-            onToggleFavorite={handleToggleFavorite}
-            topics={topics}
-            onAddToTopic={handleAddToTopic}
-          />
-        ))}
-      </div>
     </div>
   )
 }
