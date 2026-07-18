@@ -10,6 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@fontsource/inter": "^5.2.8",
+    "@fontsource/mukta-mahee": "^5.2.8",
     "gurmukhi-utils": "^3.2.2",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"

@@ -17,6 +17,13 @@ function getShabadsByIds(ids) {
   return Promise.all(ids.map((id) => api(`/shabads/${id}`)))
 }
 
+const SEARCH_MODES = [
+  ['first-letters-anywhere', 'First letter anywhere'],
+  ['first-letters', 'First letters (start)'],
+  ['text', 'Text'],
+  ['ai', 'AI search'],
+]
+
 // Vishraams (pause markers) are glued to the end of a word: "." light,
 // "," medium, ";" heavy. All three are stripped from display, but only
 // medium (blue) and heavy (orange) get a color -- light stays plain.
@@ -45,7 +52,11 @@ function ShabadHeader({ shabad, isFavorite, onToggleFavorite, topics, onAddToTop
         {shabad.writer_name ?? 'Unknown writer'} &middot; {shabad.section_name}
       </p>
       <div className="actions">
-        <button type="button" onClick={() => onToggleFavorite(shabad.id)}>
+        <button
+          type="button"
+          className={isFavorite ? 'fav-btn faved' : 'fav-btn'}
+          onClick={() => onToggleFavorite(shabad.id)}
+        >
           {isFavorite ? '★ Favorited' : '☆ Favorite'}
         </button>
         {topics.length > 0 && (
@@ -127,6 +138,7 @@ export default function App() {
   const [favoriteIds, setFavoriteIds] = useState(new Set())
   const [topics, setTopics] = useState([])
   const [newTopicName, setNewTopicName] = useState('')
+  const [topicsOpen, setTopicsOpen] = useState(false)
 
   // Which results are on screen: a search, the favorites list, or one topic.
   const [view, setView] = useState('search')
@@ -182,6 +194,13 @@ export default function App() {
   function handleCloseShabad() {
     setOpenShabad(null)
     setHighlightLineId(null)
+  }
+
+  function handleBackToSearch() {
+    setActiveTopic(null)
+    setOpenShabad(null)
+    setHighlightLineId(null)
+    setView('search')
   }
 
   async function handleViewFavorites() {
@@ -278,132 +297,114 @@ export default function App() {
 
   return (
     <div className="app">
-      <h1>Gurbani Search</h1>
+      <header className="top-bar">
+        <div className="brand">
+          <span className="ik-onkar">ੴ</span>
+          Gurbani Search
+        </div>
+        <div className="top-actions">
+          <button type="button" onClick={handleViewFavorites} disabled={view === 'favorites'}>
+            ★ Favorites
+          </button>
+          <div className="menu-wrap">
+            <button type="button" onClick={() => setTopicsOpen((open) => !open)}>
+              Topics ▾
+            </button>
+            {topicsOpen && (
+              <>
+                <div className="menu-overlay" onClick={() => setTopicsOpen(false)} />
+                <div className="menu-panel">
+                  {topics.length === 0 && <p className="menu-empty">No topics yet.</p>}
+                  {topics.map((topic) => (
+                    <button
+                      key={topic.id}
+                      type="button"
+                      className="menu-item"
+                      onClick={() => {
+                        setTopicsOpen(false)
+                        handleViewTopic(topic.id)
+                      }}
+                    >
+                      {topic.name}
+                    </button>
+                  ))}
+                  <form onSubmit={handleCreateTopic} className="menu-form">
+                    <input
+                      type="text"
+                      value={newTopicName}
+                      onChange={(e) => setNewTopicName(e.target.value)}
+                      placeholder="New topic…"
+                    />
+                    <button type="submit">Add</button>
+                  </form>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </header>
 
-      <form onSubmit={handleSearch} className="search-form">
-        <input
-          type="text"
-          // Search matches the raw ASCII Gurmukhi-font keying the database uses
-          // (same scheme toUnicode() converts elsewhere) -- for every mode but
-          // AI search (plain English questions), show that conversion directly
-          // in the box as you type, instead of the raw ASCII you typed.
-          value={mode === 'ai' ? query : toUnicode(query)}
-          onChange={(e) => {
-            if (mode === 'ai') setQuery(e.target.value)
-          }}
-          onKeyDown={(e) => {
-            if (mode === 'ai' || e.ctrlKey || e.metaKey || e.altKey) return
-            if (e.key === 'Backspace') {
-              e.preventDefault()
-              setQuery((q) => q.slice(0, -1))
-            } else if (e.key.length === 1) {
-              e.preventDefault()
-              setQuery((q) => q + e.key)
-            }
-          }}
-          onPaste={(e) => {
-            if (mode === 'ai') return
-            e.preventDefault()
-            setQuery((q) => q + e.clipboardData.getData('text'))
-          }}
-          placeholder={
-            mode === 'first-letters'
-              ? 'e.g. snkpnn (start of line)'
-              : mode === 'first-letters-anywhere'
-                ? 'e.g. snkpnn (anywhere in line)'
-                : mode === 'ai'
-                  ? 'Describe what you’re looking for…'
-                  : 'Search Gurmukhi text…'
-          }
-        />
-        <label>
-          <input
-            type="radio"
-            name="mode"
-            checked={mode === 'first-letters-anywhere'}
-            onChange={() => {
-              setMode('first-letters-anywhere')
-              setQuery('')
-            }}
-          />
-          First letter anywhere
-        </label>
-        <label>
-          <input
-            type="radio"
-            name="mode"
-            checked={mode === 'first-letters'}
-            onChange={() => {
-              setMode('first-letters')
-              setQuery('')
-            }}
-          />
-          First letters (start)
-        </label>
-        <label>
-          <input
-            type="radio"
-            name="mode"
-            checked={mode === 'text'}
-            onChange={() => {
-              setMode('text')
-              setQuery('')
-            }}
-          />
-          Text
-        </label>
-        <label>
-          <input
-            type="radio"
-            name="mode"
-            checked={mode === 'ai'}
-            onChange={() => {
-              setMode('ai')
-              setQuery('')
-            }}
-          />
-          AI search
-        </label>
-        <button type="submit">Search</button>
-      </form>
-
-      <form onSubmit={handleCreateTopic} className="topic-form">
-        <input
-          type="text"
-          value={newTopicName}
-          onChange={(e) => setNewTopicName(e.target.value)}
-          placeholder="New topic name…"
-        />
-        <button type="submit">Add topic</button>
-      </form>
-
-      <nav className="view-nav">
-        <button
-          type="button"
-          onClick={() => {
-            setView('search')
-            setOpenShabad(null)
-            setHighlightLineId(null)
-          }}
-          disabled={view === 'search' && !openShabad}
-        >
-          Search results
-        </button>
-        <button type="button" onClick={handleViewFavorites} disabled={view === 'favorites'}>
-          ★ Favorites
-        </button>
-        <select
-          value={view === 'topic' ? (activeTopic?.id ?? '') : ''}
-          onChange={(e) => handleViewTopic(e.target.value)}
-        >
-          <option value="">View a topic…</option>
-          {topics.map((topic) => (
-            <option key={topic.id} value={topic.id}>
-              {topic.name}
-            </option>
-          ))}
-        </select>
-      </nav>
+      <section className="hero">
+        <form onSubmit={handleSearch}>
+          <div className="search-row">
+            <input
+              type="text"
+              className="search-input"
+              // Search matches the raw ASCII Gurmukhi-font keying the database
+              // uses (same scheme toUnicode() converts elsewhere) -- for every
+              // mode but AI search (plain English questions), show that
+              // conversion directly in the box as you type, instead of the raw
+              // ASCII you typed.
+              value={mode === 'ai' ? query : toUnicode(query)}
+              onChange={(e) => {
+                if (mode === 'ai') setQuery(e.target.value)
+              }}
+              onKeyDown={(e) => {
+                if (mode === 'ai' || e.ctrlKey || e.metaKey || e.altKey) return
+                if (e.key === 'Backspace') {
+                  e.preventDefault()
+                  setQuery((q) => q.slice(0, -1))
+                } else if (e.key.length === 1) {
+                  e.preventDefault()
+                  setQuery((q) => q + e.key)
+                }
+              }}
+              onPaste={(e) => {
+                if (mode === 'ai') return
+                e.preventDefault()
+                setQuery((q) => q + e.clipboardData.getData('text'))
+              }}
+              placeholder={
+                mode === 'first-letters'
+                  ? 'e.g. snkpnn (start of line)'
+                  : mode === 'first-letters-anywhere'
+                    ? 'e.g. snkpnn (anywhere in line)'
+                    : mode === 'ai'
+                      ? 'Describe what you’re looking for…'
+                      : 'Search Gurmukhi text…'
+              }
+            />
+            <button type="submit" className="search-btn">
+              Search
+            </button>
+          </div>
+          <div className="mode-pills">
+            {SEARCH_MODES.map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                className={mode === value ? 'pill active' : 'pill'}
+                onClick={() => {
+                  setMode(value)
+                  setQuery('')
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </form>
+      </section>
 
       {showingShabadDetail ? (
         <>
@@ -423,6 +424,12 @@ export default function App() {
         </>
       ) : (
         <>
+          {view !== 'search' && (
+            <button type="button" className="back-link" onClick={handleBackToSearch}>
+              ← Back to search
+            </button>
+          )}
+
           <h2>
             {view === 'search' && 'Search results'}
             {view === 'favorites' && 'Favorites'}
@@ -438,8 +445,10 @@ export default function App() {
             )}
           </h2>
 
-          {status === 'loading' && <p>Loading…</p>}
-          {status === 'error' && <p>Something went wrong. Is the API server running?</p>}
+          {status === 'loading' && <p className="status-note">Loading…</p>}
+          {status === 'error' && (
+            <p className="status-note">Something went wrong. Is the API server running?</p>
+          )}
           {status !== 'loading' && displayedResults.length === 0 && (
             <p className="empty">{emptyMessage}</p>
           )}

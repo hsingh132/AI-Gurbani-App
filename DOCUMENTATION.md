@@ -72,11 +72,13 @@ sources/texts, and the table schema.
   vite.config.js                proxies /api to http://localhost:3001 in dev
 ```
 
-The client has three views, switched with the "Search results" / "★ Favorites" / topic
-dropdown nav row: a search view (last search's results), a favorites view (fetches
+The client has three views: a search view (last search's results), a favorites view (fetches
 `/api/favorites` then each shabad by id), and a topic view (same, via
-`/api/topics/:id/shabads`). The favorites view stays live -- unfavoriting a card there
-removes it immediately by filtering `browseResults` against `favoriteIds`, no refetch needed.
+`/api/topics/:id/shabads`). Favorites and topics are reached from the top bar -- a "★
+Favorites" button and a "Topics ▾" dropdown menu (which also holds the new-topic form);
+favorites/topic views show a "← Back to search" link to return. The favorites view stays
+live -- unfavoriting a card there removes it immediately by filtering `browseResults` against
+`favoriteIds`, no refetch needed.
 
 **Search results show one line, not the whole shabad.** All three search modes (text,
 first-letters, AI) return one matching line per shabad -- `SearchResultRow` renders just that
@@ -90,6 +92,23 @@ there's no single "matching line" concept for a favorited/tagged shabad.
 Deliberately kept flat: one file per concern (db, server, UI) rather than splitting
 into many small route/component files. Re-split only if a file actually gets hard to
 navigate — not preemptively.
+
+### Visual design (dark, purple & gold)
+
+The app is **dark-only** by choice (no light theme, `color-scheme: dark`): a deep
+purple-tinted near-black background, **purple** as the interactive accent (buttons, links,
+active pill, highlight glow, hero glow) and **gold** as the ornamental secondary (ੴ in the
+header, hairline card borders, section-heading rules, the favorited star, the matched-line
+edge bar). Layout is search-as-hero: a slim top bar (brand + Favorites + Topics menu), then a
+large centered search input with a soft purple radial glow behind it and the four search modes
+as pills underneath -- no permanent nav row or always-visible topic form. Fonts are bundled
+via `@fontsource` npm packages so nothing depends on the viewer's system or the network:
+**Mukta Mahee** for all Gurmukhi (`--gurmukhi`), **Inter** for UI/translations (`--sans`),
+imported in `client/src/main.jsx`. Motion is subtle: cards fade-up on entry, lift slightly on
+hover, and color/glow transitions run ~0.2s. All of it lives in the one `index.css` --
+variables up top define the whole palette if colors ever need retuning. The vishraam heavy
+color was shifted from orange toward coral (`#ff8352`) so it can't be confused with the gold
+accent next to it.
 
 ### Vishraams (pause markers)
 
@@ -272,7 +291,8 @@ embedding models for matching vague natural-language topics to centuries-old tex
 3. ~~Vishraam (pause marker) coloring~~ done
 4. ~~AI search (RAG layer)~~ **fully done** -- real build completed against the live Voyage API,
    all 106,433 lines embedded
-5. Visual overhaul -- last, not started
+5. ~~Visual overhaul~~ done -- dark-only, purple & gold, search-as-hero (see "Visual design"
+   section above)
 
 ## Known limitations / next steps
 

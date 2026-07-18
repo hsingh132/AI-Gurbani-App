@@ -1,33 +1,31 @@
-:root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --card-bg: #f7f6f3;
-  --accent: #aa3bff;
-  --vishraam-light: #0ea5e9;
-  --vishraam-heavy: #f97316;
-  --highlight-bg: rgba(170, 59, 255, 0.12);
+/* Dark-only theme: deep purple-tinted background, purple as the interactive
+   accent, gold for borders/ornament. Gurmukhi renders in Mukta Mahee, UI text
+   in Inter (both bundled via @fontsource, imported in main.jsx). */
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  font: 16px/145% var(--sans);
-  color-scheme: light dark;
+:root {
+  --bg: #0f0b15;
+  --card: #191024;
+  --card-2: #150d1e;
+  --panel: #1d1329;
+  --border: #2b2138;
+  --text: #a99cbd;
+  --text-h: #f0eae2;
+  --accent: #a78bfa;
+  --accent-strong: #8b5cf6;
+  --accent-glow: rgba(139, 92, 246, 0.35);
+  --gold: #d9b45b;
+  --gold-dim: rgba(217, 180, 91, 0.25);
+  --vishraam-light: #4cc3ff;
+  --vishraam-heavy: #ff8352;
+  --highlight-bg: rgba(139, 92, 246, 0.16);
+
+  --sans: 'Inter', system-ui, 'Segoe UI', Roboto, sans-serif;
+  --gurmukhi: 'Mukta Mahee', system-ui, sans-serif;
+
+  font: 15px/150% var(--sans);
+  color-scheme: dark;
   color: var(--text);
   background: var(--bg);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --card-bg: #1f2028;
-    --accent: #c084fc;
-    --vishraam-light: #38bdf8;
-    --vishraam-heavy: #fb923c;
-    --highlight-bg: rgba(192, 132, 252, 0.16);
-  }
 }
 
 * {
@@ -39,47 +37,62 @@ body {
 }
 
 #root {
-  max-width: 860px;
+  max-width: 820px;
   margin: 0 auto;
-  padding: 24px 16px 64px;
+  padding: 0 20px 80px;
 }
 
-h1 {
-  color: var(--text-h);
-  font-size: 32px;
-  margin: 0 0 24px;
-}
+/* --- Top bar --- */
 
-h3 {
-  color: var(--text-h);
-  margin: 0;
-}
-
-form {
+.top-bar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--gold-dim);
 }
 
-input[type='text'] {
-  flex: 1;
-  min-width: 200px;
-  padding: 8px 10px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--bg);
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   color: var(--text-h);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
 }
+
+.ik-onkar {
+  color: var(--gold);
+  font-size: 26px;
+  line-height: 1;
+  text-shadow: 0 0 18px rgba(217, 180, 91, 0.45);
+}
+
+.top-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* --- Buttons (base = quiet ghost style) --- */
 
 button {
   padding: 8px 14px;
-  border: 1px solid var(--accent);
-  border-radius: 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
   background: transparent;
-  color: var(--accent);
+  color: var(--text);
+  font: inherit;
   cursor: pointer;
+  transition: border-color 0.2s, color 0.2s, background 0.2s, transform 0.2s, box-shadow 0.2s;
+}
+
+button:hover {
+  border-color: var(--accent);
+  color: var(--text-h);
 }
 
 button:disabled {
@@ -87,43 +100,274 @@ button:disabled {
   cursor: default;
 }
 
-.view-nav {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 8px;
+/* --- Topics dropdown menu --- */
+
+.menu-wrap {
+  position: relative;
 }
 
-h2 {
+.menu-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+}
+
+.menu-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 30;
+  min-width: 240px;
+  padding: 8px;
+  background: var(--panel);
+  border: 1px solid var(--gold-dim);
+  border-radius: 12px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+  animation: fade-up 0.2s ease-out;
+}
+
+.menu-item {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 8px;
+  text-align: left;
   color: var(--text-h);
-  font-size: 20px;
-  margin: 12px 0;
 }
 
-.empty {
+.menu-item:hover {
+  background: var(--highlight-bg);
+  border: none;
+}
+
+.menu-empty {
+  margin: 4px 10px 8px;
+  font-size: 13px;
   font-style: italic;
 }
 
-.shabad-card {
+.menu-form {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.menu-form input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* --- Hero search --- */
+
+.hero {
+  position: relative;
+  padding: 44px 0 10px;
+}
+
+.hero::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 420px;
+  height: 190px;
+  background: radial-gradient(closest-side, var(--accent-glow), transparent);
+  filter: blur(40px);
+  pointer-events: none;
+}
+
+.search-row {
+  position: relative;
+  display: flex;
+  gap: 10px;
+}
+
+input[type='text'] {
+  padding: 9px 12px;
   border: 1px solid var(--border);
-  background: var(--card-bg);
-  border-radius: 10px;
-  padding: 16px;
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--text-h);
+  font: inherit;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+input[type='text']:focus {
+  outline: none;
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(217, 180, 91, 0.15);
+}
+
+input[type='text']::placeholder {
+  color: #6d6182;
+}
+
+.search-input {
+  flex: 1;
+  min-width: 0;
+  padding: 14px 18px;
+  border-radius: 14px;
+  font-family: var(--gurmukhi);
+  font-size: 21px;
+  line-height: 1.4;
+}
+
+.search-btn {
+  padding: 0 24px;
+  border: none;
+  border-radius: 14px;
+  background: linear-gradient(180deg, var(--accent-strong), #7040e0);
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 4px 18px var(--accent-glow);
+}
+
+.search-btn:hover {
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 24px var(--accent-glow);
+}
+
+.mode-pills {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.pill {
+  padding: 7px 15px;
+  border-radius: 999px;
+  font-size: 13.5px;
+}
+
+.pill.active {
+  border-color: var(--accent);
+  background: var(--highlight-bg);
+  color: #e9dfff;
+}
+
+/* --- Section headings --- */
+
+h2 {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 26px 0 18px;
+  color: var(--text-h);
+  font-size: 17px;
+  font-weight: 600;
+}
+
+h2::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, var(--gold-dim), transparent);
+}
+
+.delete-topic {
+  padding: 4px 10px;
+  font-size: 12.5px;
+  font-weight: 400;
+  border-color: rgba(255, 131, 82, 0.4);
+  color: var(--vishraam-heavy);
+}
+
+.delete-topic:hover {
+  border-color: var(--vishraam-heavy);
+  color: var(--vishraam-heavy);
+}
+
+.empty,
+.status-note {
+  padding: 28px 0;
+  text-align: center;
+  font-style: italic;
+}
+
+/* --- Shabad cards --- */
+
+.shabad-card {
   margin-bottom: 16px;
+  padding: 18px 20px;
+  background: linear-gradient(180deg, var(--card), var(--card-2));
+  border: 1px solid var(--gold-dim);
+  border-radius: 14px;
   text-align: left;
+  animation: fade-up 0.3s ease-out both;
+  transition: border-color 0.25s, transform 0.25s, box-shadow 0.25s;
+}
+
+.shabad-card:hover {
+  border-color: rgba(167, 139, 250, 0.5);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.4);
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.shabad-card h3 {
+  margin: 0;
+  color: var(--gold);
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
 }
 
 .shabad-card .meta {
-  margin: 2px 0 10px;
-  font-size: 14px;
+  margin: 3px 0 12px;
+  font-size: 13px;
 }
 
 .shabad-card .actions {
   display: flex;
-  gap: 10px;
-  margin-bottom: 10px;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 6px;
 }
+
+.shabad-card .actions button,
+.shabad-card .actions select {
+  font-size: 13px;
+  padding: 6px 12px;
+}
+
+.fav-btn.faved {
+  border-color: var(--gold-dim);
+  color: var(--gold);
+}
+
+select {
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+select:hover {
+  border-color: var(--accent);
+}
+
+/* --- Lines --- */
 
 .lines {
   list-style: none;
@@ -132,7 +376,7 @@ h2 {
 }
 
 .lines li {
-  padding: 8px 0;
+  padding: 10px 0;
   border-top: 1px solid var(--border);
 }
 
@@ -141,50 +385,66 @@ h2 {
 }
 
 .lines li.highlighted {
-  background: var(--highlight-bg);
-  margin: 0 -16px;
-  padding: 8px 16px;
-  border-radius: 6px;
+  margin: 0 -20px;
+  padding: 10px 17px;
+  border-left: 3px solid var(--gold);
+  border-radius: 0 8px 8px 0;
+  background: linear-gradient(90deg, var(--highlight-bg), transparent 85%);
 }
 
 .gurmukhi {
+  margin: 0 0 2px;
   color: var(--text-h);
-  font-size: 18px;
-  margin: 0 0 4px;
+  font-family: var(--gurmukhi);
+  font-size: 21px;
+  line-height: 1.55;
 }
+
+.translation {
+  margin: 0;
+  font-size: 13.5px;
+}
+
+/* Search result: the one matched line, clickable */
 
 .result-line {
   display: block;
   width: 100%;
-  text-align: left;
-  padding: 8px 0 0;
+  padding: 6px 0 0;
   border: none;
-  border-radius: 6px;
   background: transparent;
   color: inherit;
-  cursor: pointer;
+  text-align: left;
+}
+
+.result-line:hover {
+  border: none;
+  transform: translateX(3px);
 }
 
 .result-line:hover .gurmukhi {
-  text-decoration: underline;
+  color: var(--accent);
 }
 
-.delete-topic {
-  margin-left: 12px;
-  padding: 4px 10px;
-  font-size: 13px;
-  border-color: var(--vishraam-heavy);
-  color: var(--vishraam-heavy);
+.result-line .gurmukhi {
+  transition: color 0.2s;
 }
 
 .back-link {
   display: inline-block;
-  margin-bottom: 12px;
+  margin: 18px 0 4px;
   padding: 4px 0;
   border: none;
   background: none;
   color: var(--accent);
 }
+
+.back-link:hover {
+  border: none;
+  color: var(--gold);
+}
+
+/* --- Vishraam (pause) colors --- */
 
 .vishraam-light {
   color: var(--vishraam-light);
@@ -192,9 +452,4 @@ h2 {
 
 .vishraam-heavy {
   color: var(--vishraam-heavy);
-}
-
-.translation {
-  margin: 0;
-  font-size: 14px;
 }
