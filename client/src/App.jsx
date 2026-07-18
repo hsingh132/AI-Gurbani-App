@@ -122,7 +122,7 @@ function SearchResultRow({ shabad, isFavorite, onToggleFavorite, topics, onAddTo
 
 export default function App() {
   const [query, setQuery] = useState('')
-  const [mode, setMode] = useState('text')
+  const [mode, setMode] = useState('first-letters-anywhere')
   const [status, setStatus] = useState('idle')
   const [favoriteIds, setFavoriteIds] = useState(new Set())
   const [topics, setTopics] = useState([])
@@ -283,27 +283,72 @@ export default function App() {
       <form onSubmit={handleSearch} className="search-form">
         <input
           type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          // Search matches the raw ASCII Gurmukhi-font keying the database uses
+          // (same scheme toUnicode() converts elsewhere) -- for every mode but
+          // AI search (plain English questions), show that conversion directly
+          // in the box as you type, instead of the raw ASCII you typed.
+          value={mode === 'ai' ? query : toUnicode(query)}
+          onChange={(e) => {
+            if (mode === 'ai') setQuery(e.target.value)
+          }}
+          onKeyDown={(e) => {
+            if (mode === 'ai' || e.ctrlKey || e.metaKey || e.altKey) return
+            if (e.key === 'Backspace') {
+              e.preventDefault()
+              setQuery((q) => q.slice(0, -1))
+            } else if (e.key.length === 1) {
+              e.preventDefault()
+              setQuery((q) => q + e.key)
+            }
+          }}
+          onPaste={(e) => {
+            if (mode === 'ai') return
+            e.preventDefault()
+            setQuery((q) => q + e.clipboardData.getData('text'))
+          }}
           placeholder={
             mode === 'first-letters'
-              ? 'e.g. snkpnn'
-              : mode === 'ai'
-                ? 'Describe what you’re looking for…'
-                : 'Search Gurmukhi text…'
+              ? 'e.g. snkpnn (start of line)'
+              : mode === 'first-letters-anywhere'
+                ? 'e.g. snkpnn (anywhere in line)'
+                : mode === 'ai'
+                  ? 'Describe what you’re looking for…'
+                  : 'Search Gurmukhi text…'
           }
         />
-        {mode !== 'ai' && query && (
-          // Search matches the raw ASCII Gurmukhi-font keying the database
-          // uses (same as toUnicode() elsewhere), so show what it becomes.
-          <p className="gurmukhi-preview">{toUnicode(query)}</p>
-        )}
+        <label>
+          <input
+            type="radio"
+            name="mode"
+            checked={mode === 'first-letters-anywhere'}
+            onChange={() => {
+              setMode('first-letters-anywhere')
+              setQuery('')
+            }}
+          />
+          First letter anywhere
+        </label>
+        <label>
+          <input
+            type="radio"
+            name="mode"
+            checked={mode === 'first-letters'}
+            onChange={() => {
+              setMode('first-letters')
+              setQuery('')
+            }}
+          />
+          First letters (start)
+        </label>
         <label>
           <input
             type="radio"
             name="mode"
             checked={mode === 'text'}
-            onChange={() => setMode('text')}
+            onChange={() => {
+              setMode('text')
+              setQuery('')
+            }}
           />
           Text
         </label>
@@ -311,13 +356,12 @@ export default function App() {
           <input
             type="radio"
             name="mode"
-            checked={mode === 'first-letters'}
-            onChange={() => setMode('first-letters')}
+            checked={mode === 'ai'}
+            onChange={() => {
+              setMode('ai')
+              setQuery('')
+            }}
           />
-          First letters
-        </label>
-        <label>
-          <input type="radio" name="mode" checked={mode === 'ai'} onChange={() => setMode('ai')} />
           AI search
         </label>
         <button type="submit">Search</button>

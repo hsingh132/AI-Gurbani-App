@@ -169,14 +169,6 @@ h2 {
   text-decoration: underline;
 }
 
-.gurmukhi-preview {
-  flex-basis: 100%;
-  order: 1;
-  margin: -4px 0 0;
-  color: var(--text-h);
-  font-size: 20px;
-}
-
 .delete-topic {
   margin-left: 12px;
   padding: 4px 10px;

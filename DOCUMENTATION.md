@@ -148,7 +148,7 @@ It decompresses `data/gurbani-database.sqlite.gz` itself on first run.
 
 | Method | Path | What |
 |---|---|---|
-| GET | `/api/shabads/search?q=&mode=text\|first-letters` | search, one matching `line` per shabad (not the full shabad) |
+| GET | `/api/shabads/search?q=&mode=first-letters-anywhere\|first-letters\|text` | search, one matching `line` per shabad (not the full shabad); default mode is `first-letters-anywhere` |
 | GET | `/api/shabads/:id` | one shabad, every line, with English translations |
 | GET | `/api/favorites` | list favorited shabad IDs |
 | POST | `/api/favorites` | body `{ shabadId }` |
@@ -238,21 +238,29 @@ always works with no internet; AI search needs Voyage's API both to build the in
 embed each query afterward. Deliberate tradeoff, given the quality gap between local and API
 embedding models for matching vague natural-language topics to centuries-old text.
 
-### Typing Gurmukhi, case-sensitive keying, and deleting topics
+### Typing Gurmukhi, case-sensitive keying, search modes, and deleting topics
 
-- **Live Gurmukhi preview while typing.** The `gurmukhi` column (and therefore Text/First
-  letters search) is keyed in the same ASCII "GurbaniAkhar" scheme described above -- typing is
-  meant to be done directly in that scheme (e.g. `siq nwmu`), not English. Rather than convert
-  the input box's own value in place (cursor position gets unreliable once `toUnicode()` starts
-  reordering matras mid-word), the client shows a live read-only preview line right under the
-  input (`.gurmukhi-preview` in `client/src/App.jsx`/`index.css`) running the same
-  `gurmukhi-utils` `toUnicode()` conversion used for display elsewhere, so you can see the real
-  Gurmukhi your keystrokes produce before hitting search.
+- **The search box itself shows Gurmukhi as you type**, not the raw ASCII underneath it. The
+  `gurmukhi`/`first_letters` columns (and therefore every mode but AI search) are keyed in the
+  same ASCII "GurbaniAkhar" scheme described above -- typing is meant to be done directly in
+  that scheme (e.g. `siq nwmu`), not English. The input's controlled `value` is always
+  `toUnicode(query)` (real Gurmukhi), while `query` itself (the raw ASCII actually sent to the
+  backend) is built up manually via `onKeyDown`/`onPaste` instead of `onChange` -- appending the
+  literal key pressed, popping on Backspace -- since if the box's value is already converted
+  Unicode, the browser's native edit-in-place (`onChange`'s `e.target.value`) would be a mix of
+  old Unicode and one new raw character with no reliable way to map that back to ASCII (matras
+  reorder, so ASCII and Unicode positions don't line up 1:1). Tradeoff: mid-string cursor
+  editing isn't supported (typing always appends, Backspace always removes from the end) --
+  fine for a search box, not a text editor. AI search mode is unaffected -- it's plain English,
+  so the box behaves like a normal input there.
 - **Fixed: search was case-insensitive, which broke the aspirated/unaspirated letter
   distinction.** In this ASCII scheme, case is meaningful -- e.g. lowercase `b` is ਬ (baba),
   uppercase `B` is ਭ (bhabha) -- but SQLite's `LIKE` folds ASCII case by default, so searching
   `B` was also matching every `b`. Fixed with `PRAGMA case_sensitive_like = ON` on `gurbaniDb`
   in `server/src/db.js`. Verified: searching `B` now only returns ਭ-containing lines.
+- **New search mode: "First letter anywhere"** (`mode=first-letters-anywhere`), matching a
+  first-letters phrase occurring anywhere in a line, not just at the start (`first-letters`
+  still exists for that, unchanged). This is now the **default** selected mode.
 - **Delete topics.** `DELETE /api/topics/:id`, with a "Delete topic" button next to the heading
   when viewing a topic in the client. `topic_shabads` rows for that topic delete automatically
   (`ON DELETE CASCADE`, already set up in the schema).

@@ -80,12 +80,16 @@ function getShabadWithMatchedLine(shabadId, lineId) {
   return { ...header, line: toDisplayLine(line) }
 }
 
+const SEARCH_MODES = new Set(['first-letters', 'first-letters-anywhere'])
+
 app.get('/api/shabads/search', (req, res) => {
   const q = (req.query.q ?? '').toString().trim()
-  const mode = req.query.mode === 'first-letters' ? 'first-letters' : 'text'
+  const mode = SEARCH_MODES.has(req.query.mode) ? req.query.mode : 'text'
   if (!q) return res.json({ results: [] })
 
-  const column = mode === 'first-letters' ? 'first_letters' : 'gurmukhi'
+  const column = mode === 'text' ? 'gurmukhi' : 'first_letters'
+  // "first-letters" matches from the start of a line; "first-letters-anywhere"
+  // matches the phrase starting anywhere within the line.
   const pattern = mode === 'first-letters' ? `${q}%` : `%${q}%`
   // One matching line per shabad (the earliest one in reading order), not
   // an arbitrary row -- matches ROW_NUMBER's determinism elsewhere in the app.
