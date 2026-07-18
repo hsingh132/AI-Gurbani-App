@@ -148,6 +148,12 @@ app.post('/api/topics', (req, res) => {
   res.status(201).json({ id: lastInsertRowid, name })
 })
 
+// topic_shabads rows cascade on delete (ON DELETE CASCADE, see db.js).
+app.delete('/api/topics/:id', (req, res) => {
+  userDb.prepare('DELETE FROM topics WHERE id = ?').run(req.params.id)
+  res.status(204).end()
+})
+
 app.get('/api/topics/:id/shabads', (req, res) => {
   const shabadIds = userDb
     .prepare('SELECT shabad_id FROM topic_shabads WHERE topic_id = ? ORDER BY created_at DESC')

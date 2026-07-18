@@ -14,6 +14,9 @@ if (!existsSync(GURBANI_DB_PATH)) {
 
 // Reference database: the Gurbani text itself. Read-only, never modified.
 export const gurbaniDb = new Database(GURBANI_DB_PATH, { readonly: true })
+// SQLite's LIKE is case-insensitive by default, which breaks Gurmukhi ASCII
+// search: e.g. "B" (ਭ, bhabha) would also match "b" (ਬ, baba).
+gurbaniDb.pragma('case_sensitive_like = ON')
 
 // Personal data: favorites and topics. Kept separate from the reference
 // database so that can stay pristine/swappable.

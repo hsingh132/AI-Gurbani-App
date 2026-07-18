@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { toUnicode } from 'gurmukhi-utils'
 
 async function api(path, options) {
   const res = await fetch(`/api${path}`, {
@@ -248,6 +249,16 @@ export default function App() {
     })
   }
 
+  async function handleDeleteTopic(topicId) {
+    await api(`/topics/${topicId}`, { method: 'DELETE' })
+    setTopics((prev) => prev.filter((t) => t.id !== topicId))
+    if (activeTopic?.id === topicId) {
+      setActiveTopic(null)
+      setBrowseResults([])
+      setView('search')
+    }
+  }
+
   // Favorites view stays live: unfavoriting a card removes it immediately.
   const displayedResults =
     view === 'search'
@@ -282,6 +293,11 @@ export default function App() {
                 : 'Search Gurmukhi text…'
           }
         />
+        {mode !== 'ai' && query && (
+          // Search matches the raw ASCII Gurmukhi-font keying the database
+          // uses (same as toUnicode() elsewhere), so show what it becomes.
+          <p className="gurmukhi-preview">{toUnicode(query)}</p>
+        )}
         <label>
           <input
             type="radio"
@@ -367,6 +383,15 @@ export default function App() {
             {view === 'search' && 'Search results'}
             {view === 'favorites' && 'Favorites'}
             {view === 'topic' && `Topic: ${activeTopic?.name ?? ''}`}
+            {view === 'topic' && activeTopic && (
+              <button
+                type="button"
+                className="delete-topic"
+                onClick={() => handleDeleteTopic(activeTopic.id)}
+              >
+                Delete topic
+              </button>
+            )}
           </h2>
 
           {status === 'loading' && <p>Loading…</p>}

@@ -155,6 +155,7 @@ It decompresses `data/gurbani-database.sqlite.gz` itself on first run.
 | DELETE | `/api/favorites/:shabadId` | remove a favorite |
 | GET | `/api/topics` | list topics |
 | POST | `/api/topics` | body `{ name }` |
+| DELETE | `/api/topics/:id` | delete a topic (its `topic_shabads` tags cascade-delete too) |
 | GET | `/api/topics/:id/shabads` | shabad IDs in a topic |
 | POST | `/api/topics/:id/shabads` | body `{ shabadId }`, tag a shabad into a topic |
 | DELETE | `/api/topics/:id/shabads/:shabadId` | untag |
@@ -236,6 +237,25 @@ npm run build-embeddings   # one-time, costs well under $1; minutes with a payme
 always works with no internet; AI search needs Voyage's API both to build the index once and to
 embed each query afterward. Deliberate tradeoff, given the quality gap between local and API
 embedding models for matching vague natural-language topics to centuries-old text.
+
+### Typing Gurmukhi, case-sensitive keying, and deleting topics
+
+- **Live Gurmukhi preview while typing.** The `gurmukhi` column (and therefore Text/First
+  letters search) is keyed in the same ASCII "GurbaniAkhar" scheme described above -- typing is
+  meant to be done directly in that scheme (e.g. `siq nwmu`), not English. Rather than convert
+  the input box's own value in place (cursor position gets unreliable once `toUnicode()` starts
+  reordering matras mid-word), the client shows a live read-only preview line right under the
+  input (`.gurmukhi-preview` in `client/src/App.jsx`/`index.css`) running the same
+  `gurmukhi-utils` `toUnicode()` conversion used for display elsewhere, so you can see the real
+  Gurmukhi your keystrokes produce before hitting search.
+- **Fixed: search was case-insensitive, which broke the aspirated/unaspirated letter
+  distinction.** In this ASCII scheme, case is meaningful -- e.g. lowercase `b` is ਬ (baba),
+  uppercase `B` is ਭ (bhabha) -- but SQLite's `LIKE` folds ASCII case by default, so searching
+  `B` was also matching every `b`. Fixed with `PRAGMA case_sensitive_like = ON` on `gurbaniDb`
+  in `server/src/db.js`. Verified: searching `B` now only returns ਭ-containing lines.
+- **Delete topics.** `DELETE /api/topics/:id`, with a "Delete topic" button next to the heading
+  when viewing a topic in the client. `topic_shabads` rows for that topic delete automatically
+  (`ON DELETE CASCADE`, already set up in the schema).
 
 ## Todos
 
