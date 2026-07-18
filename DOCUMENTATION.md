@@ -199,9 +199,19 @@ How it works, matching the finalized plan:
 **The one thing not yet done: actually building the index against the real API.** The API
 itself is network-blocked in the environment this was built in, so the actual
 `npm run build-embeddings` run (embeds all 106,433 lines that have an English translation,
-costs well under $1, takes a few minutes) needs to happen wherever `server/.env` and normal
-internet access both exist. Until that's run once, `/api/ai-search` returns a `503` telling you
-exactly that.
+costs well under $1) needs to happen wherever `server/.env` and normal internet access both
+exist. Until that's run once, `/api/ai-search` returns a `503` telling you exactly that.
+
+**Voyage rate limits without a payment method on file**: 3 requests/minute -- `voyage.js`
+retries on 429 with real backoff (up to 15 retries, honors a `Retry-After` header, exponential
+otherwise) so it won't crash, but at that pace the full run takes **roughly 6 hours**. Adding a
+payment method at [dashboard.voyageai.com](https://dashboard.voyageai.com) unlocks standard
+rate limits and the run finishes in minutes instead -- still free, the 200M free-token
+allowance applies either way and this corpus only needs ~3.1M. `build-embeddings.js` is
+resumable either way: it skips line IDs already present in `embeddings.sqlite`, so an
+interrupted run (laptop sleep, closed terminal, whatever) can just be rerun rather than
+restarting from zero. Verified: seeded a partial run, killed it mid-flight, reran, confirmed it
+picked up exactly where it left off instead of redoing finished work.
 
 **Setup needed before the real build will work:**
 
@@ -211,7 +221,8 @@ VOYAGE_API_KEY=pa-...
 
 cd server
 npm install          # picks up nothing new -- voyage.js uses native fetch, no new deps
-npm run build-embeddings   # one-time, costs well under $1, takes a few minutes
+npm run build-embeddings   # one-time, costs well under $1; minutes with a payment method
+                            # on file at Voyage, ~6 hours without one (safe to interrupt/rerun)
 ```
 
 **Online-enhanced, not offline-first, and that's fine here.** Keyword/first-letter search

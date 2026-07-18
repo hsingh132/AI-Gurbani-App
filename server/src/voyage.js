@@ -4,7 +4,7 @@ export const EMBEDDING_DIMENSION = process.env.VOYAGE_OUTPUT_DIMENSION
   ? Number(process.env.VOYAGE_OUTPUT_DIMENSION)
   : 1024
 
-async function embed(texts, inputType, { retries = 3 } = {}) {
+async function embed(texts, inputType, { retries = 15, delayMs = 5000 } = {}) {
   const apiKey = process.env.VOYAGE_API_KEY
   if (!apiKey) throw new Error('VOYAGE_API_KEY is not set (add it to server/.env)')
 
@@ -19,9 +19,13 @@ async function embed(texts, inputType, { retries = 3 } = {}) {
     }),
   })
 
+  // Accounts without a payment method on file are capped at 3 requests/minute
+  // by Voyage -- that needs patience, not just a couple of quick retries.
   if (res.status === 429 && retries > 0) {
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-    return embed(texts, inputType, { retries: retries - 1 })
+    const retryAfterHeader = res.headers.get('retry-after')
+    const wait = retryAfterHeader ? Number(retryAfterHeader) * 1000 : delayMs
+    await new Promise((resolve) => setTimeout(resolve, wait))
+    return embed(texts, inputType, { retries: retries - 1, delayMs: Math.min(delayMs * 1.5, 65000) })
   }
 
   if (!res.ok) {

@@ -31,9 +31,21 @@ async function main() {
     )
     .all()
 
-  console.log(`Embedding ${rows.length} lines with ${EMBEDDING_MODEL} (dim ${EMBEDDING_DIMENSION})...`)
-
   const embeddingsDb = openEmbeddingsDb()
+
+  // Resumable: skip lines already embedded, so an interrupted run (this can
+  // take hours on Voyage's no-payment-method rate limit) can just be rerun.
+  const alreadyDone = new Set(
+    embeddingsDb.prepare('SELECT line_id FROM line_embeddings').pluck().all()
+  )
+  const remaining = rows.filter((row) => !alreadyDone.has(row.line_id))
+
+  console.log(
+    `Embedding ${remaining.length} lines with ${EMBEDDING_MODEL} (dim ${EMBEDDING_DIMENSION})` +
+      (alreadyDone.size > 0 ? ` -- ${alreadyDone.size} already done, resuming` : '') +
+      '...'
+  )
+
   const insert = embeddingsDb.prepare(
     'INSERT OR REPLACE INTO line_embeddings (line_id, shabad_id, model, dim, embedding) VALUES (?, ?, ?, ?, ?)'
   )
@@ -45,12 +57,12 @@ async function main() {
   })
 
   let done = 0
-  for (let i = 0; i < rows.length; i += BATCH_SIZE) {
-    const batch = rows.slice(i, i + BATCH_SIZE)
+  for (let i = 0; i < remaining.length; i += BATCH_SIZE) {
+    const batch = remaining.slice(i, i + BATCH_SIZE)
     const vectors = await embedDocuments(batch.map((row) => row.translation))
     insertBatch(batch, vectors)
     done += batch.length
-    process.stdout.write(`\r${done}/${rows.length}`)
+    process.stdout.write(`\r${done}/${remaining.length}`)
   }
 
   console.log('\nDone.')
