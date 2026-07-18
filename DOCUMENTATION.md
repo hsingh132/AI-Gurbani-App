@@ -14,8 +14,7 @@ Nand Lal's Baani, with:
 - A favorites feature (bookmark individual shabads)
 - A topics feature (tag/group shabads into custom topics, many-to-many)
 - An AI search mode that answers questions like "find me a shabad about patience" by searching
-  the meaning of shabads, not just literal text matches (built; see "AI agent" below for the
-  one remaining setup step)
+  the meaning of shabads, not just literal text matches (built and fully live)
 
 ## Data source decision
 
@@ -196,11 +195,9 @@ How it works, matching the finalized plan:
 5. **Client**: a third radio option ("AI search") next to Text / First letters in the search
    form, `client/src/App.jsx`. Same results list/rendering as the other two modes.
 
-**The one thing not yet done: actually building the index against the real API.** The API
-itself is network-blocked in the environment this was built in, so the actual
-`npm run build-embeddings` run (embeds all 106,433 lines that have an English translation,
-costs well under $1) needs to happen wherever `server/.env` and normal internet access both
-exist. Until that's run once, `/api/ai-search` returns a `503` telling you exactly that.
+**Status: fully live.** The real `npm run build-embeddings` run against the live Voyage API
+completed -- all 106,433 lines embedded, `data/embeddings.sqlite` populated. `/api/ai-search`
+works for real now, not just against the mock server used to build/verify the code.
 
 **Voyage rate limits without a payment method on file**: 3 requests/minute -- `voyage.js`
 retries on 429 with real backoff (up to 15 retries, honors a `Retry-After` header, exponential
@@ -213,7 +210,8 @@ interrupted run (laptop sleep, closed terminal, whatever) can just be rerun rath
 restarting from zero. Verified: seeded a partial run, killed it mid-flight, reran, confirmed it
 picked up exactly where it left off instead of redoing finished work.
 
-**Setup needed before the real build will work:**
+**Rebuild steps (e.g. on a fresh clone/machine)** -- `embeddings.sqlite` is gitignored like the
+other local databases, so this needs to be redone anywhere the repo gets cloned fresh:
 
 ```bash
 # server/.env (gitignored) needs:
@@ -235,8 +233,8 @@ embedding models for matching vague natural-language topics to centuries-old tex
 1. ~~Gurmukhi rendering~~ done
 2. ~~Favorites/Topics browsing UI~~ done
 3. ~~Vishraam (pause marker) coloring~~ done
-4. ~~AI search (RAG layer)~~ code done, verified against a mock Voyage server -- the real
-   `npm run build-embeddings` run against the live API is the one remaining step (see above)
+4. ~~AI search (RAG layer)~~ **fully done** -- real build completed against the live Voyage API,
+   all 106,433 lines embedded
 5. Visual overhaul -- last, not started
 
 ## Known limitations / next steps
@@ -253,5 +251,4 @@ embedding models for matching vague natural-language topics to centuries-old tex
   Fine for a personal app; would need addressing if this ever becomes multi-user.
 - **Translations are English-only** in the current API (`language_id = 1`); the database has
   Punjabi, Spanish, Hindi, and Urdu translation sources too (see `data/README.md`).
-- **AI search**: code complete, but the real embedding build hasn't been run against the live
-  Voyage API yet (see the AI agent section above for the exact command).
+- ~~AI search~~ **Done.** Fully working, real embeddings built against the live Voyage API.
