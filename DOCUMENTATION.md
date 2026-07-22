@@ -149,6 +149,43 @@ cd client && npm run dev   # http://localhost:5173 (proxies /api to the server)
 Verified working end-to-end (search, favorite toggle, topic creation) via a scripted browser
 smoke test during scaffolding.
 
+### Running permanently (one link, always available, own devices only)
+
+For everyday use you don't want two terminal windows open forever. The server can serve the
+**built** client itself, so the whole app is one process on one port:
+
+```bash
+cd client && npm run build          # writes client/dist -- rebuild after any client change
+```
+
+`server/src/index.js` serves `client/dist` (and falls back to it for any non-`/api` route, so
+client-side routing/refresh works) whenever that folder exists -- in normal two-terminal dev
+mode it's absent, so this is a no-op there. `app.listen` binds `0.0.0.0`, not just localhost,
+so it's reachable from other devices on the same network/mesh, not only from the Mac itself.
+
+**Keep it running with pm2** (`ecosystem.config.js` at the repo root):
+
+```bash
+npm install -g pm2
+pm2 start ecosystem.config.js   # runs server/src/index.js with server/.env loaded
+pm2 save                        # remember this process list
+pm2 startup                     # prints one command to run once, so pm2 (and this app)
+                                 # relaunches automatically after a reboot/login
+```
+
+Useful commands afterward: `pm2 status`, `pm2 logs gurbani-app`, `pm2 restart gurbani-app`
+(do this after rebuilding the client or pulling server changes), `pm2 stop gurbani-app`.
+
+**Reaching it from your other devices without exposing it publicly:** rather than a real
+public deployment, point a private mesh VPN (e.g. NordVPN's Meshnet, or Tailscale) at the Mac.
+That gives the Mac a stable private address that your other devices (phone, iPad, laptop) can
+reach as if they were on the same LAN, from anywhere -- with nothing exposed to the open
+internet and no login/auth needed in the app itself, since only devices you've explicitly
+approved into the mesh can reach it at all. Enable Meshnet on the Mac and on each device you
+want to use, approve them, then visit `http://<mac's-meshnet-address>:3001` from that device.
+(No code here depends on which mesh tool you use -- it's Mac/network configuration, done
+outside this repo.)
+
 ### Running without Node (e.g. from an iPad in Pyto)
 
 The server/client scaffold needs Node.js/npm, which isn't available in Python-only mobile

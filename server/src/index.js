@@ -1,5 +1,8 @@
 import cors from 'cors'
 import express from 'express'
+import { existsSync } from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { default as gurmukhiUtils } from 'gurmukhi-utils'
 import { gurbaniDb, userDb } from './db.js'
 import { semanticSearch } from './semanticSearch.js'
@@ -209,6 +212,16 @@ app.post('/api/ai-search', async (req, res) => {
   }
 })
 
-app.listen(PORT, () => {
+// Serve the built client (npm run build in client/) from the same origin/port
+// as the API, if it's been built. Lets the whole app run as one process --
+// simpler for always-on setups (pm2, Meshnet) than running two dev servers.
+// In normal two-terminal dev mode client/dist won't exist, so this is a no-op.
+const CLIENT_DIST = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../client/dist')
+if (existsSync(CLIENT_DIST)) {
+  app.use(express.static(CLIENT_DIST))
+  app.get(/^(?!\/api\/).*/, (_req, res) => res.sendFile(path.join(CLIENT_DIST, 'index.html')))
+}
+
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Gurbani API listening on http://localhost:${PORT}`)
 })

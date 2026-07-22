@@ -8,3 +8,4 @@ data/embeddings.sqlite-wal
 
 node_modules/
 .env
+client/dist/
