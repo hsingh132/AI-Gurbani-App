@@ -44,12 +44,13 @@ function GurmukhiLine({ text }) {
   })
 }
 
-function ShabadHeader({ shabad, isFavorite, onToggleFavorite, topics, onAddToTopic }) {
+function ShabadHeader({ shabad, pageNumber, isFavorite, onToggleFavorite, topics, onAddToTopic }) {
   return (
     <header>
       <h3>{shabad.source_name}</h3>
       <p className="meta">
         {shabad.writer_name ?? 'Unknown writer'} &middot; {shabad.section_name}
+        {pageNumber != null && <> &middot; Page {pageNumber}</>}
       </p>
       <div className="actions">
         <button
@@ -86,10 +87,15 @@ function ShabadHeader({ shabad, isFavorite, onToggleFavorite, topics, onAddToTop
 // detail view opened from a search result. highlightLineId marks the
 // specific line that matched a search, if any.
 function ShabadCard({ shabad, isFavorite, onToggleFavorite, topics, onAddToTopic, highlightLineId }) {
+  const pageNumber =
+    shabad.lines.find((line) => line.id === highlightLineId)?.source_page ??
+    shabad.lines[0]?.source_page
+
   return (
     <article className="shabad-card">
       <ShabadHeader
         shabad={shabad}
+        pageNumber={pageNumber}
         isFavorite={isFavorite}
         onToggleFavorite={onToggleFavorite}
         topics={topics}
@@ -116,6 +122,7 @@ function SearchResultRow({ shabad, isFavorite, onToggleFavorite, topics, onAddTo
     <article className="shabad-card">
       <ShabadHeader
         shabad={shabad}
+        pageNumber={shabad.line.source_page}
         isFavorite={isFavorite}
         onToggleFavorite={onToggleFavorite}
         topics={topics}

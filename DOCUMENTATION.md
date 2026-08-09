@@ -70,6 +70,10 @@ sources/texts, and the table schema.
                                 component, and the App component (search form,
                                 view nav, favorite/topic UI)
   vite.config.js                proxies /api to http://localhost:3001 in dev
+
+/ios/GurbaniKhojAI             native SwiftUI iPhone/iPad app (in development)
+  GurbaniKhojAI.xcodeproj      Xcode project, bundle ID com.harnoorsingh.gurbanikhojai
+  GurbaniKhojAI/               SwiftUI source and asset catalog
 ```
 
 The client has three views: a search view (last search's results), a favorites view (fetches
@@ -88,6 +92,12 @@ matched visually highlighted (`.lines li.highlighted`, `--highlight-bg` in `inde
 Back to results" link returns to the compact list without re-searching. Favorites/topics
 browsing is unaffected -- those still render full multi-line `ShabadCard`s directly, since
 there's no single "matching line" concept for a favorited/tagged shabad.
+
+Search results are grouped by source and ordered by the matched line's page number within each
+source. The source order is Sri Guru Granth Sahib Ji, Sri Dasam Granth, the two Bhai Gurdas Ji
+works, the four Bhai Nand Lal Ji works, then the remaining sources. AI search still selects its
+top matches by semantic relevance first, then organizes that selected set in the same display
+order.
 
 Deliberately kept flat: one file per concern (db, server, UI) rather than splitting
 into many small route/component files. Re-split only if a file actually gets hard to

@@ -9,3 +9,5 @@ data/embeddings.sqlite-wal
 node_modules/
 .env
 client/dist/
+.DS_Store
+*.bak

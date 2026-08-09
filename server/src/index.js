@@ -10,6 +10,39 @@ import { semanticSearch } from './semanticSearch.js'
 const app = express()
 const PORT = process.env.PORT ?? 3001
 
+// Search results are grouped by source, with the major collections first.
+// Source IDs 3-4 are Bhai Gurdas Ji's works and 5-8 are Bhai Nand Lal Ji's.
+// Unknown/future sources sort after the known collections.
+const SOURCE_PRIORITY = new Map([
+  [1, 0], // Sri Guru Granth Sahib Ji
+  [2, 1], // Sri Dasam Granth
+  [3, 2], // Vaaran Bhai Gurdas Ji
+  [4, 3], // Kabit Savaiye Bhai Gurdas Ji
+  [5, 4], // Ghazals Bhai Nand Lal Ji
+  [6, 5], // Zindagi Nama Bhai Nand Lal Ji
+  [7, 6], // Ganj Nama Bhai Nand Lal Ji
+  [8, 7], // Jot Bigas Bhai Nand Lal Ji
+])
+
+function sourcePriority(sourceId) {
+  return SOURCE_PRIORITY.get(sourceId) ?? 100 + sourceId
+}
+
+function compareSearchResults(a, b) {
+  return (
+    sourcePriority(a.source_id) - sourcePriority(b.source_id) ||
+    a.source_id - b.source_id ||
+    a.line.source_page - b.line.source_page ||
+    (a.line.source_line ?? 0) - (b.line.source_line ?? 0) ||
+    a.line.order_id - b.line.order_id ||
+    a.id.localeCompare(b.id)
+  )
+}
+
+function orderSearchResults(results) {
+  return results.filter(Boolean).sort(compareSearchResults)
+}
+
 app.use(cors())
 app.use(express.json())
 
@@ -19,7 +52,7 @@ app.get('/api/health', (_req, res) => res.json({ ok: true }))
 
 const shabadHeaderStmt = gurbaniDb.prepare(`
   SELECT
-    s.id, s.order_id,
+    s.id, s.source_id, s.order_id,
     src.name_english AS source_name,
     w.name_english AS writer_name,
     sec.name_english AS section_name
@@ -100,18 +133,37 @@ app.get('/api/shabads/search', (req, res) => {
     .prepare(
       `
       SELECT line_id, shabad_id FROM (
-        SELECT id AS line_id, shabad_id,
-          ROW_NUMBER() OVER (PARTITION BY shabad_id ORDER BY order_id) AS rn
-        FROM lines
-        WHERE ${column} LIKE ?
+        SELECT l.id AS line_id, l.shabad_id, s.source_id,
+          l.source_page, l.source_line, l.order_id AS line_order_id,
+          ROW_NUMBER() OVER (PARTITION BY l.shabad_id ORDER BY l.order_id) AS rn
+        FROM lines l
+        JOIN shabads s ON s.id = l.shabad_id
+        WHERE l.${column} LIKE ?
       )
       WHERE rn = 1
+      ORDER BY
+        CASE source_id
+          WHEN 1 THEN 0
+          WHEN 2 THEN 1
+          WHEN 3 THEN 2
+          WHEN 4 THEN 3
+          WHEN 5 THEN 4
+          WHEN 6 THEN 5
+          WHEN 7 THEN 6
+          WHEN 8 THEN 7
+          ELSE 100 + source_id
+        END,
+        source_id, source_page, source_line, line_order_id, shabad_id
       LIMIT 40
       `
     )
     .all(pattern)
 
-  res.json({ results: matches.map((m) => getShabadWithMatchedLine(m.shabad_id, m.line_id)) })
+  res.json({
+    results: orderSearchResults(
+      matches.map((m) => getShabadWithMatchedLine(m.shabad_id, m.line_id))
+    ),
+  })
 })
 
 app.get('/api/shabads/:id', (req, res) => {
@@ -204,7 +256,11 @@ app.post('/api/ai-search', async (req, res) => {
         .json({ error: 'Embeddings not built yet -- run `npm run build-embeddings` in server/' })
     }
     res.json({
-      results: matches.map(({ shabadId, lineId }) => getShabadWithMatchedLine(shabadId, lineId)),
+      // semanticSearch chooses the most relevant matches; presentation then
+      // groups those matches by collection and page like the text modes.
+      results: orderSearchResults(
+        matches.map(({ shabadId, lineId }) => getShabadWithMatchedLine(shabadId, lineId))
+      ),
     })
   } catch (err) {
     console.error(err)
