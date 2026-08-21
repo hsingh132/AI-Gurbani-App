@@ -9,7 +9,7 @@
     "build-embeddings": "./run-with-secrets.sh node scripts/build-embeddings.js"
   },
   "dependencies": {
-    "better-sqlite3": "^11.9.1",
+    "better-sqlite3": "^13.0.3",
     "cors": "^2.8.5",
     "express": "^4.21.2",
     "gurmukhi-utils": "^3.2.2"
