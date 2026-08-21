@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node --env-file=.env --watch src/index.js",
-    "start": "node --env-file=.env src/index.js",
-    "build-embeddings": "node --env-file=.env scripts/build-embeddings.js"
+    "dev": "./run-with-secrets.sh node --watch src/index.js",
+    "start": "./run-with-secrets.sh node src/index.js",
+    "build-embeddings": "./run-with-secrets.sh node scripts/build-embeddings.js"
   },
   "dependencies": {
     "better-sqlite3": "^11.9.1",

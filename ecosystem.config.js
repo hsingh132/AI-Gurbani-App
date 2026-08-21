@@ -5,8 +5,9 @@ module.exports = {
     {
       name: 'gurbani-app',
       cwd: 'server',
-      script: 'src/index.js',
-      node_args: '--env-file=.env',
+      script: './run-with-secrets.sh',
+      args: ['node', 'src/index.js'],
+      interpreter: 'none',
       autorestart: true,
       max_restarts: 10,
     },

@@ -48,8 +48,8 @@ sources/texts, and the table schema.
                                 works in Pyto on iPad/iPhone, decompresses the db itself)
 
 /server                        Node + Express API (better-sqlite3, no build step)
-  .env                          gitignored — holds VOYAGE_API_KEY, loaded via
-                                `node --env-file=.env` in the dev/start/build-embeddings scripts
+  .env.op                       tracked 1Password reference for VOYAGE_API_KEY; contains no secret
+  run-with-secrets.sh           injects project secrets at runtime through Project Utopia
   src/db.js                    both database connections: read-only gurbaniDb, and
                                 userDb (favorites/topics tables, created on first run)
   src/embeddingsDb.js          the AI-search vector store: opens/creates
@@ -177,7 +177,7 @@ so it's reachable from other devices on the same network/mesh, not only from the
 
 ```bash
 npm install -g pm2
-pm2 start ecosystem.config.js   # runs server/src/index.js with server/.env loaded
+pm2 start ecosystem.config.js   # runs server/src/index.js with 1Password-injected secrets
 pm2 save                        # remember this process list
 pm2 startup                     # prints one command to run once, so pm2 (and this app)
                                  # relaunches automatically after a reboot/login
@@ -290,8 +290,8 @@ picked up exactly where it left off instead of redoing finished work.
 other local databases, so this needs to be redone anywhere the repo gets cloned fresh:
 
 ```bash
-# server/.env (gitignored) needs:
-VOYAGE_API_KEY=pa-...
+# Install Project Utopia's `utopia-env` tool and authorize 1Password first.
+# server/.env.op contains the safe VOYAGE_API_KEY secret reference.
 
 cd server
 npm install          # picks up nothing new -- voyage.js uses native fetch, no new deps
